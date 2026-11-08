@@ -1,0 +1,14 @@
+{
+  "name": "@card-engine/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@card-engine/core": "workspace:*",
+    "@card-engine/config": "workspace:*",
+    "@card-engine/importers": "workspace:*",
+    "pg": "^8.16.3",
+    "zod": "^4.3.6"
+  }
+}

@@ -1,0 +1,40 @@
+# Optional monitor. No database, encryption key, or cloud credentials required.
+services:
+  backup-alerts:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    environment:
+      BACKUP_INSTANCE_ID: ${BACKUP_INSTANCE_ID:-main}
+      BACKUP_DIRECTORY: /backups
+      BACKUP_ALERT_POLICY_VERSION: ${BACKUP_ALERT_POLICY_VERSION:-1}
+      BACKUP_ALERT_CHECKS: ${BACKUP_ALERT_CHECKS:-capture}
+      BACKUP_ALERT_STATE_DIRECTORY: /var/lib/card-engine-monitor
+      BACKUP_ALERT_WEBHOOK_FILE: /run/secrets/backup_alert_receiver
+    volumes:
+      - type: bind
+        source: ${BACKUP_DIRECTORY:?Set the capture directory}
+        target: /backups
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BACKUP_ALERT_WEBHOOK_FILE:?Set the separate private receiver file}
+        target: /run/secrets/backup_alert_receiver
+        read_only: true
+        bind:
+          create_host_path: false
+      - backup-alert-state:/var/lib/card-engine-monitor
+    tmpfs:
+      - /run/backup-key:rw,noexec,nosuid,size=1m,mode=0700,uid=1000,gid=1000
+    entrypoint: ["node", "--import", "tsx", "apps/worker/src/docker.ts"]
+    command: ["monitor-serve"]
+    healthcheck:
+      test: ["CMD", "pnpm", "backup:monitor:status"]
+      interval: 60s
+      timeout: 15s
+      start_period: 90s
+      retries: 1
+    restart: unless-stopped
+volumes:
+  backup-alert-state:

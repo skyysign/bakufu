@@ -1,0 +1,5 @@
+id,sourceKey,name,series,categories,popularity
+c5000000-0000-4000-8000-000000000001,workshop:vale,Vale,The Paper Workshop,paper makers,40
+c5000000-0000-4000-8000-000000000002,workshop:reed,Reed,The Paper Workshop,paper makers,30
+c5000000-0000-4000-8000-000000000003,workshop:moss,Moss,The Paper Workshop,wind walkers,20
+c5000000-0000-4000-8000-000000000004,workshop:kite,Kite,The Paper Workshop,wind walkers,10

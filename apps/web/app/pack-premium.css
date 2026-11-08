@@ -1,0 +1,310 @@
+/* ------------------------------------------------------------------------- */
+/* Premium pack wrappers (original art). Palette per pack theme comes from    */
+/* pack-palettes.ts as CSS variables; layout and size rules stay in           */
+/* pack-art.css / cards.css so every place a pack appears keeps its geometry. */
+/* ------------------------------------------------------------------------- */
+
+.foil-pack.illustrated-pack {
+  --wrapper-accent: #ff7ac6;
+  border: 1px solid color-mix(in srgb, var(--wrapper-light) 62%, transparent);
+  border-radius: 7px;
+  background:
+    radial-gradient(
+      120% 72% at 50% 40%,
+      color-mix(in srgb, var(--wrapper-color) 92%, #fff) 0%,
+      color-mix(in srgb, var(--wrapper-color) 58%, var(--wrapper-dark)) 40%,
+      var(--wrapper-dark) 80%
+    ),
+    var(--wrapper-dark);
+  box-shadow:
+    0 14px 30px #05061299,
+    0 0 0 1px #0008,
+    inset 0 0 0 3px color-mix(in srgb, var(--wrapper-dark) 55%, transparent),
+    inset 0 0 0 4px color-mix(in srgb, var(--wrapper-light) 28%, transparent),
+    inset 0 0 28px color-mix(in srgb, var(--wrapper-accent) 24%, transparent);
+}
+
+/* Inner frame: double rule, fine diagonal guilloche and corner rivets. */
+.foil-pack.illustrated-pack::before {
+  inset: 9% 6.5% 9%;
+  border: 1px solid color-mix(in srgb, var(--wrapper-ink) 34%, transparent);
+  border-radius: 4px;
+  outline: 1px solid color-mix(in srgb, var(--wrapper-ink) 13%, transparent);
+  outline-offset: 3px;
+  background:
+    radial-gradient(circle, var(--wrapper-ink) 0 1.4px, transparent 2px) top left / 9px 9px no-repeat,
+    radial-gradient(circle, var(--wrapper-ink) 0 1.4px, transparent 2px) top right / 9px 9px no-repeat,
+    radial-gradient(circle, var(--wrapper-ink) 0 1.4px, transparent 2px) bottom left / 9px 9px no-repeat,
+    radial-gradient(circle, var(--wrapper-ink) 0 1.4px, transparent 2px) bottom right / 9px 9px no-repeat,
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 8px,
+      color-mix(in srgb, var(--wrapper-ink) 6%, transparent) 8px 9px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 8px,
+      color-mix(in srgb, var(--wrapper-ink) 4%, transparent) 8px 9px
+    );
+  opacity: 0.9;
+}
+.foil-pack.illustrated-pack::after {
+  margin: 0;
+  border: 0;
+}
+
+/* Heat-sealed crimps: ridged metal with a sawtooth seal edge. */
+.illustrated-pack .pack-crimp {
+  z-index: 6;
+  height: 6.5%;
+  opacity: 1;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--wrapper-light) 60%, var(--wrapper-dark)) 0 1.5px,
+      color-mix(in srgb, var(--wrapper-dark) 80%, #000) 1.5px 3.5px
+    );
+  box-shadow: inset 0 -1px 0 #0006, inset 0 1px 0 #fff3;
+}
+.illustrated-pack .crimp-top::after,
+.illustrated-pack .crimp-bottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background:
+    linear-gradient(135deg, var(--wrapper-light) 25%, transparent 25%) 0 0 / 6px 4px repeat-x,
+    linear-gradient(225deg, var(--wrapper-light) 25%, transparent 25%) 0 0 / 6px 4px repeat-x;
+  opacity: 0.45;
+}
+.illustrated-pack .crimp-top::after {
+  bottom: -4px;
+}
+.illustrated-pack .crimp-bottom::after {
+  top: -4px;
+  transform: scaleY(-1);
+}
+
+/* "Tear here": dashed line under the top seal with a notch on both sides. */
+.illustrated-pack .pack-tear-line {
+  position: absolute;
+  z-index: 6;
+  top: calc(6.5% + 6px);
+  left: 4%;
+  right: 4%;
+  height: 0;
+  border-top: 1px dashed color-mix(in srgb, var(--wrapper-ink) 55%, transparent);
+  pointer-events: none;
+}
+.illustrated-pack .pack-tear-line::before,
+.illustrated-pack .pack-tear-line::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+.illustrated-pack .pack-tear-line::before {
+  left: -5%;
+  border-left: 5px solid #07070d;
+}
+.illustrated-pack .pack-tear-line::after {
+  right: -5%;
+  border-right: 5px solid #07070d;
+}
+
+/* Glowing emblem behind the theme sigil. */
+.illustrated-pack .pack-medallion {
+  position: absolute;
+  z-index: 1;
+  top: 45%;
+  left: 50%;
+  width: 74%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--wrapper-accent) 46%, transparent) 0%,
+    color-mix(in srgb, var(--wrapper-accent) 14%, transparent) 44%,
+    transparent 68%
+  );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--wrapper-ink) 22%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--wrapper-ink) 5%, transparent);
+  animation: pack-medallion 5.5s ease-in-out infinite;
+}
+@keyframes pack-medallion {
+  50% {
+    opacity: 0.72;
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+}
+.illustrated-pack .pack-sigil {
+  z-index: 2;
+  color: var(--wrapper-ink);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--wrapper-accent) 60%, transparent));
+}
+.illustrated-pack .pack-edition,
+.foil-pack.illustrated-pack .foil-bottom {
+  z-index: 3;
+  color: color-mix(in srgb, var(--wrapper-ink) 80%, var(--wrapper-accent));
+  font-weight: 700;
+}
+.illustrated-pack[data-pack-style='themed'] .pack-wrapper-title {
+  background: linear-gradient(180deg, #fff 35%, var(--wrapper-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 6px #000d);
+}
+.illustrated-pack .pack-wrapper-rule {
+  z-index: 3;
+  color: var(--wrapper-accent);
+}
+
+/* Holographic foil: a soft rainbow film with a light sweep. */
+.illustrated-pack .pack-holo {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(
+        112deg,
+        transparent 32%,
+        color-mix(in srgb, #fff 70%, transparent) 46%,
+        transparent 58%
+      )
+      0 0 / 260% 100%,
+    conic-gradient(from 210deg at 32% 28%, #ff6ad5, #ffd36b, #7afcff, #ad8cff, #ff6ad5);
+  mix-blend-mode: soft-light;
+  opacity: 0.22;
+  animation: pack-holo 6.5s ease-in-out infinite;
+}
+@keyframes pack-holo {
+  0%,
+  100% {
+    background-position:
+      130% 0,
+      0 0;
+  }
+  50% {
+    background-position:
+      -30% 0,
+      0 0;
+  }
+}
+.pack:hover .illustrated-pack .pack-holo,
+.illustrated-pack:hover .pack-holo,
+.opening-seal .illustrated-pack .pack-holo {
+  opacity: 0.42;
+  animation-duration: 2.8s;
+}
+
+/* ------------------------------ Tear moment ------------------------------ */
+/* A flash along the tear line and foil scraps flying off as the seal rips. */
+.opening-seal .tear-flash,
+.opening-seal .tear-shards {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+}
+.opening-seal .tear-flash {
+  top: 20px;
+  left: -14%;
+  right: -14%;
+  height: 20px;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    #fff 0%,
+    color-mix(in srgb, var(--reveal-glow, #c9b8ff) 85%, transparent) 30%,
+    transparent 70%
+  );
+  filter: blur(1.5px);
+}
+.opening-seal .tear-shards {
+  inset: 0;
+}
+.opening-seal .tear-shards i {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  width: 7px;
+  height: 3px;
+  border-radius: 1px;
+  opacity: 0;
+  background: linear-gradient(90deg, #fff, var(--reveal-glow, #d6c3ff));
+  box-shadow: 0 0 6px var(--reveal-glow, #d6c3ff);
+}
+.is-unsealing .opening-seal .tear-flash {
+  animation: tear-flash calc(var(--charge-duration, 1000ms) * 0.95) ease-out both;
+}
+.is-unsealing .opening-seal .tear-shards i {
+  animation: tear-shard 0.95s cubic-bezier(0.15, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--i) * 14ms + 70ms);
+}
+@keyframes tear-flash {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.08);
+  }
+  14% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  45% {
+    opacity: 0.95;
+    transform: scaleX(1.1) scaleY(2.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1.2) scaleY(7);
+  }
+}
+@keyframes tear-shard {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) rotate(var(--r));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x)), var(--y)) rotate(calc(var(--r) * 5));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-pack .pack-holo,
+  .illustrated-pack .pack-medallion,
+  .is-unsealing .opening-seal .tear-flash,
+  .is-unsealing .opening-seal .tear-shards i {
+    animation: none !important;
+  }
+}
+
+/* The tearable seal strip above the pack in the opening room uses the pack's palette. */
+.opening-seal .opening-seal-cap {
+  border-color: color-mix(in srgb, var(--wrapper-light, #d4bcff) 60%, transparent);
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--wrapper-light, #d4bcff) 55%, var(--wrapper-dark, #1b1433)) 0 1.5px,
+    color-mix(in srgb, var(--wrapper-dark, #1b1433) 80%, #000) 1.5px 3.5px
+  );
+  box-shadow:
+    inset 0 -3px color-mix(in srgb, var(--wrapper-accent, #ff7ac6) 30%, transparent),
+    0 0 14px color-mix(in srgb, var(--wrapper-accent, #ff7ac6) 30%, transparent);
+}
+.opening-seal .opening-seal-cap > span {
+  color: var(--wrapper-ink, #ead9fd);
+  background: var(--wrapper-dark, #392b4f);
+}
+.opening-seal .opening-seal-line {
+  background: var(--wrapper-accent, #e8ceff);
+  box-shadow: 0 0 7px var(--wrapper-accent, #e3b7ff);
+}

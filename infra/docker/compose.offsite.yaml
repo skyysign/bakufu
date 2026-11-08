@@ -1,0 +1,53 @@
+# Opt-in after local backup setup. Never enables public object ACLs or cloud deletion.
+services:
+  offsite:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      NEXT_TELEMETRY_DISABLED: "1"
+      BACKUP_POLICY_VERSION: ${BACKUP_POLICY_VERSION:-1}
+      BACKUP_INSTANCE_ID: ${BACKUP_INSTANCE_ID:-main}
+      BACKUP_DIRECTORY: /backups
+      BACKUP_PASSPHRASE_FILE: /run/secrets/backup_passphrase
+      BACKUP_REMOTE_POLICY_VERSION: ${BACKUP_REMOTE_POLICY_VERSION:-1}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:?Set the private bucket HTTPS API endpoint}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:?Set the storage signing region}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:?Set the existing private bucket name}
+      BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:?Set a dedicated object prefix}
+      BACKUP_S3_CREDENTIALS_FILE: /run/secrets/backup_s3_credentials
+      BACKUP_REMOTE_MAX_BYTES: ${BACKUP_REMOTE_MAX_BYTES:-67108864}
+    volumes:
+      - type: bind
+        source: ${BACKUP_DIRECTORY:?Set the existing private capture directory}
+        target: /backups
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BACKUP_PASSPHRASE_FILE:?Set the separate private backup passphrase file}
+        target: /run/secrets/backup_passphrase
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BACKUP_S3_CREDENTIALS_FILE:?Set the separate private storage credential file}
+        target: /run/secrets/backup_s3_credentials
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /run/backup-key:rw,noexec,nosuid,size=1m,mode=0700,uid=1000,gid=1000
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["node", "--import", "tsx", "apps/worker/src/docker.ts"]
+    command: ["remote-serve"]
+    healthcheck:
+      test: ["CMD", "pnpm", "backup:remote:status"]
+      interval: 60s
+      timeout: 15s
+      start_period: 180s
+      retries: 1
+    stop_grace_period: 180s
+    restart: unless-stopped

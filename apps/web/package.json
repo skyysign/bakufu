@@ -1,0 +1,22 @@
+{
+  "name": "@card-engine/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env node_modules/next/dist/bin/next dev --webpack",
+    "build": "next build --webpack",
+    "start": "node --env-file-if-exists=../../.env node_modules/next/dist/bin/next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@card-engine/config": "workspace:*",
+    "@card-engine/core": "workspace:*",
+    "@card-engine/db": "workspace:*",
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
+    "@fontsource-variable/inter": "5.3.0",
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  }
+}

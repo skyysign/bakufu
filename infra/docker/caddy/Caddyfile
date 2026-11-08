@@ -1,0 +1,4 @@
+{
+	import /etc/caddy/options.caddy
+}
+import /etc/caddy/site.caddy

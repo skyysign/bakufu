@@ -1,0 +1,37 @@
+# Opt-in public HTTPS. See docs/deployment/https.md.
+services:
+  https-check:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    environment:
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?Set your DNS hostname}
+      APP_ORIGIN: ${APP_ORIGIN:?Set the exact public HTTPS origin}
+      COOKIE_SECURE: ${COOKIE_SECURE:?Set COOKIE_SECURE=true}
+    command: ["pnpm", "deployment:check"]
+    restart: "no"
+  web:
+    stop_grace_period: 30s
+    environment:
+      COOKIE_SECURE: "true"
+  proxy:
+    image: caddy:2.11-alpine
+    environment:
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?Set your DNS hostname}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/docker/caddy:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      https-check:
+        condition: service_completed_successfully
+      web:
+        condition: service_healthy
+    stop_grace_period: 35s
+    restart: unless-stopped
+volumes:
+  caddy-data:
+  caddy-config:

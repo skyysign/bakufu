@@ -1,0 +1,42 @@
+# Opt-in: docker compose -f compose.yaml -f infra/docker/compose.backups.yaml ...
+services:
+  backups:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      NEXT_TELEMETRY_DISABLED: "1"
+      BACKUP_POLICY_VERSION: ${BACKUP_POLICY_VERSION:-1}
+      BACKUP_INSTANCE_ID: ${BACKUP_INSTANCE_ID:-main}
+      BACKUP_DIRECTORY: /backups
+      BACKUP_PASSPHRASE_FILE: /run/secrets/backup_passphrase
+      BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-3}
+      BACKUP_RETAIN_DAILY: ${BACKUP_RETAIN_DAILY:-7}
+      BACKUP_RETAIN_WEEKLY: ${BACKUP_RETAIN_WEEKLY:-4}
+    volumes:
+      - type: bind
+        source: ${BACKUP_DIRECTORY:?Set an absolute private BACKUP_DIRECTORY outside the repository}
+        target: /backups
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BACKUP_PASSPHRASE_FILE:?Set an absolute private BACKUP_PASSPHRASE_FILE}
+        target: /run/secrets/backup_passphrase
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    tmpfs:
+      - /run/backup-key:rw,noexec,nosuid,size=1m,mode=0700,uid=1000,gid=1000
+    entrypoint: ["node", "--import", "tsx", "apps/worker/src/docker.ts"]
+    command: ["serve"]
+    healthcheck:
+      test: ["CMD", "pnpm", "backup:status"]
+      interval: 60s
+      timeout: 15s
+      start_period: 90s
+      retries: 1
+    restart: unless-stopped

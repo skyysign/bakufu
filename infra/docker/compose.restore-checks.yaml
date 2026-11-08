@@ -1,0 +1,77 @@
+# Opt-in, in addition to the base and backup overlays. Contains no live DB connection.
+services:
+  restore-check-db:
+    image: postgres:18-bookworm
+    environment:
+      POSTGRES_USER: restore_checker
+      POSTGRES_PASSWORD: ${RESTORE_CHECK_PASSWORD:?Set a separate private RESTORE_CHECK_PASSWORD}
+      POSTGRES_DB: card_engine_restore_control
+    command: ["postgres", "-c", "log_min_messages=fatal", "-c", "log_min_error_statement=panic", "-c", "log_error_verbosity=terse"]
+    tmpfs:
+      - /var/lib/postgresql:rw,nosuid,size=1g
+    networks: [restore-check-only]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  restore-check-init:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    environment: &restore-check-env
+      RESTORE_CHECK_DATABASE_URL: postgresql://restore_checker:${RESTORE_CHECK_PASSWORD}@restore-check-db:5432/card_engine_restore_control
+      NEXT_TELEMETRY_DISABLED: "1"
+      BACKUP_POLICY_VERSION: ${BACKUP_POLICY_VERSION:-1}
+      BACKUP_INSTANCE_ID: ${BACKUP_INSTANCE_ID:-main}
+      BACKUP_DIRECTORY: /backups
+      BACKUP_PASSPHRASE_FILE: /run/secrets/backup_passphrase
+      RESTORE_CHECK_POLICY_VERSION: ${RESTORE_CHECK_POLICY_VERSION:-1}
+      RESTORE_CHECK_DAY_UTC: ${RESTORE_CHECK_DAY_UTC:-1}
+      RESTORE_CHECK_HOUR_UTC: ${RESTORE_CHECK_HOUR_UTC:-4}
+      RESTORE_CHECK_MAX_BACKUP_AGE_HOURS: ${RESTORE_CHECK_MAX_BACKUP_AGE_HOURS:-36}
+    volumes: &restore-check-volumes
+      - type: bind
+        source: ${BACKUP_DIRECTORY:?Set an absolute private BACKUP_DIRECTORY outside the repository}
+        target: /backups
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BACKUP_PASSPHRASE_FILE:?Set an absolute private BACKUP_PASSPHRASE_FILE}
+        target: /run/secrets/backup_passphrase
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [restore-check-only]
+    depends_on:
+      restore-check-db:
+        condition: service_healthy
+    entrypoint: ["node", "--import", "tsx", "apps/worker/src/docker.ts"]
+    command: ["verify-init"]
+    restart: "no"
+  restore-check:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    environment: *restore-check-env
+    volumes: *restore-check-volumes
+    tmpfs:
+      - /run/backup-key:rw,noexec,nosuid,size=1m,mode=0700,uid=1000,gid=1000
+    networks: [restore-check-only]
+    depends_on:
+      restore-check-init:
+        condition: service_completed_successfully
+    entrypoint: ["node", "--import", "tsx", "apps/worker/src/docker.ts"]
+    command: ["verify-serve"]
+    healthcheck:
+      test: ["CMD", "pnpm", "backup:verify:status"]
+      interval: 60s
+      timeout: 15s
+      start_period: 180s
+      retries: 1
+    stop_grace_period: 180s
+    restart: unless-stopped
+networks:
+  restore-check-only:
+    internal: true

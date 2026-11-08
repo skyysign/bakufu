@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "source": "lantern-demo",
+  "revision": "1",
+  "license": "Original Card Engine demo text, MIT; no third-party artwork",
+  "characters": [
+    {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "sourceKey": "lantern-demo:mira",
+      "name": "Mira Tidekeeper",
+      "series": "The Lantern Atlas",
+      "categories": ["Tidebound", "Wayfinders"],
+      "popularity": 120
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000002",
+      "sourceKey": "lantern-demo:oren",
+      "name": "Oren Cloudwright",
+      "series": "The Lantern Atlas",
+      "categories": ["Skyward", "Artificers"],
+      "popularity": 110
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000003",
+      "sourceKey": "lantern-demo:fern",
+      "name": "Fern Mosskeeper",
+      "series": "The Lantern Atlas",
+      "categories": ["Wildgrove", "Wayfinders"],
+      "popularity": 100
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000004",
+      "sourceKey": "lantern-demo:ivo",
+      "name": "Ivo Copperhand",
+      "series": "The Lantern Atlas",
+      "categories": ["Tidebound", "Artificers"],
+      "popularity": 90
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000005",
+      "sourceKey": "lantern-demo:luma",
+      "name": "Luma Starcartographer",
+      "series": "The Lantern Atlas",
+      "categories": ["Skyward", "Wayfinders"],
+      "popularity": 80
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000006",
+      "sourceKey": "lantern-demo:brin",
+      "name": "Brin Rootmender",
+      "series": "The Lantern Atlas",
+      "categories": ["Wildgrove", "Artificers"],
+      "popularity": 70
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000007",
+      "sourceKey": "lantern-demo:sable",
+      "name": "Sable Reefrunner",
+      "series": "The Lantern Atlas",
+      "categories": ["Tidebound", "Wayfinders"],
+      "popularity": 60
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000008",
+      "sourceKey": "lantern-demo:pip",
+      "name": "Pip Windpost",
+      "series": "The Lantern Atlas",
+      "categories": ["Skyward", "Wayfinders"],
+      "popularity": 50
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000009",
+      "sourceKey": "lantern-demo:vale",
+      "name": "Vale Emberpotter",
+      "series": "The Lantern Atlas",
+      "categories": ["Wildgrove", "Artificers"],
+      "popularity": 40
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000010",
+      "sourceKey": "lantern-demo:tavi",
+      "name": "Tavi Saltweaver",
+      "series": "The Lantern Atlas",
+      "categories": ["Tidebound", "Artificers"],
+      "popularity": 30
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000011",
+      "sourceKey": "lantern-demo:nell",
+      "name": "Nell Kitewatch",
+      "series": "The Lantern Atlas",
+      "categories": ["Skyward", "Wayfinders"],
+      "popularity": 20
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000012",
+      "sourceKey": "lantern-demo:ro",
+      "name": "Ro Pebblebard",
+      "series": "The Lantern Atlas",
+      "categories": ["Wildgrove", "Wayfinders"],
+      "popularity": null
+    }
+  ]
+}

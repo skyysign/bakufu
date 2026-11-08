@@ -1,0 +1,19 @@
+# Runtime errors can include requests even with access logs disabled.
+admin off
+grace_period 30s
+log {
+	format filter {
+		wrap json
+		fields {
+			request delete
+			uri delete
+			url delete
+		}
+	}
+}
+servers {
+	timeouts {
+		read_header 10s
+		idle 60s
+	}
+}

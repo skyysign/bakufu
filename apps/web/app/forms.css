@@ -1,0 +1,492 @@
+/* ------------------------------------------------------------------------- */
+/* Settings design language                                                  */
+/* One setting per row: label and help on the left, the control in a shared  */
+/* right-hand column, so every control lines up regardless of label length.  */
+/* Used by Game rules, the realm wizard and the provider browsers.           */
+/* ------------------------------------------------------------------------- */
+
+.settings-fields {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.settings-group {
+  min-width: 0;
+  padding: 0 20px 4px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-raised);
+}
+.settings-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px 16px;
+  padding: 18px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-group-head > div {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+.settings-group-head h4 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+}
+.settings-group-head p {
+  margin: 4px 0 0;
+  max-width: 68ch;
+  color: var(--text-3);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.settings-reset {
+  flex: 0 0 auto;
+  min-height: 36px;
+  margin: -6px -10px 0 0;
+  color: var(--accent) !important;
+  font-size: 14px;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 230px);
+  align-items: center;
+  gap: 10px 28px;
+  padding: 14px 0;
+}
+.setting-row + .setting-row,
+.tier-row + .tier-row {
+  border-top: 1px solid var(--border);
+}
+.setting-text {
+  min-width: 0;
+}
+.setting-text > label {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.setting-help {
+  margin: 3px 0 0;
+  color: var(--text-3);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.setting-control {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.setting-row-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+.setting-row-wide .setting-control > input,
+.setting-row-wide .setting-control > select,
+.setting-row-wide .setting-control > textarea {
+  width: 100%;
+}
+.setting-toggle {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Number field with its unit inside: [   1000  gems ] */
+.unit-input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg);
+  transition: border-color 0.15s;
+}
+.unit-input:hover {
+  border-color: #ffffff3d;
+}
+.unit-input:focus-within {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-line);
+  outline-offset: 1px;
+}
+.unit-input > input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.unit-input > input:focus,
+.unit-input > input:focus-visible {
+  outline: none;
+  background: transparent;
+}
+.unit-input > input::-webkit-inner-spin-button,
+.unit-input > input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+.unit-input-unit {
+  flex: 0 0 auto;
+  padding-right: 13px;
+  color: var(--text-3);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.unit-input:has(input:disabled) {
+  opacity: 0.55;
+}
+
+/* On/off switch built on a real checkbox. */
+input[type='checkbox'].switch {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-3);
+  cursor: pointer;
+  appearance: none;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+input[type='checkbox'].switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-2);
+  transition:
+    transform 0.15s,
+    background-color 0.15s;
+}
+input[type='checkbox'].switch:checked {
+  border-color: transparent;
+  background: var(--accent-strong);
+}
+input[type='checkbox'].switch:checked::before {
+  background: #fff;
+  transform: translateX(18px);
+}
+input[type='checkbox'].switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+input[type='checkbox'].switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  input[type='checkbox'].switch,
+  input[type='checkbox'].switch::before {
+    transition: none;
+  }
+}
+
+/* Rarity matrix: weight, resulting chance and base value per tier. */
+.tier-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(120px, 170px) 64px minmax(140px, 200px);
+  align-items: center;
+  gap: 10px 18px;
+  padding: 10px 0;
+}
+.tier-row-head {
+  padding: 14px 0 2px;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 650;
+}
+.tier-row-head > span:nth-child(n + 2) {
+  text-align: right;
+}
+.tier-row-head + .tier-row {
+  border-top: 0;
+}
+.tier-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 650;
+}
+.tier-name::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--r-common);
+  box-shadow: 0 0 10px currentColor;
+  color: transparent;
+}
+.tier-name[data-tier='uncommon']::before {
+  background: var(--r-uncommon);
+}
+.tier-name[data-tier='rare']::before {
+  background: var(--r-rare);
+}
+.tier-name[data-tier='epic']::before {
+  background: var(--r-epic);
+}
+.tier-name[data-tier='legendary']::before {
+  background: var(--r-legendary);
+}
+.tier-chance {
+  color: var(--text-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Collector rank summary and raw JSON editor. */
+.rank-track-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  margin: 4px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.rank-track-summary li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.rank-track-summary span {
+  color: var(--text-3);
+  font-size: 14px;
+}
+.settings-inline-error {
+  margin: 8px 0 12px;
+  color: var(--warning);
+  font-size: 14px;
+}
+.settings-json {
+  margin: 0 0 14px;
+}
+.settings-json > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.settings-json > label {
+  margin: 8px 0;
+}
+
+.settings-submit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 4px;
+}
+.settings-submit .setting-help {
+  margin: 0;
+}
+
+/* Inside the wizard's "Customize gameplay rules" disclosure. */
+.admin-advanced[open] > .setting-help {
+  margin: 0 0 4px;
+}
+.admin-advanced .settings-fields {
+  margin-bottom: 18px;
+}
+
+/* Phones and narrow panels: text above control; switches stay on the right. */
+@media (max-width: 680px) {
+  .settings-category-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .settings-category-tabs > button {
+    flex: 0 0 auto;
+  }
+  .settings-group {
+    padding: 0 14px 2px;
+  }
+  .setting-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .setting-row .setting-control {
+    justify-content: stretch;
+  }
+  .setting-toggle {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .settings-reset {
+    margin: 0 0 0 -10px;
+  }
+  .tier-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'name chance'
+      'weight value';
+    gap: 8px 10px;
+  }
+  .tier-row > .tier-name {
+    grid-area: name;
+  }
+  .tier-row > .tier-chance {
+    grid-area: chance;
+  }
+  .tier-row > .tier-weight {
+    grid-area: weight;
+  }
+  .tier-row > .tier-value {
+    grid-area: value;
+  }
+  .tier-row-head {
+    display: none;
+  }
+  .tier-row-head + .tier-row {
+    border-top: 0;
+  }
+}
+
+/* ---------- Anime & manga roster ---------- */
+.provider-switch {
+  margin: 4px 0 6px;
+}
+.provider-source > .field-help {
+  margin: 4px 0 4px;
+}
+.catalog-artwork-note {
+  margin: 10px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #fbbf2440;
+  border-radius: 12px;
+  background: var(--warning-soft);
+  color: #fde3a0;
+  font-size: 15px;
+}
+.roster-size {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+}
+.roster-size-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.roster-size-head > label {
+  margin: 0 !important;
+}
+.roster-size-number {
+  width: 220px;
+  max-width: 100%;
+}
+input[type='range'] {
+  width: 100%;
+  min-height: 0;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--accent-strong);
+  cursor: pointer;
+  appearance: none;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8b5cf6, #d946ef) 0 0 / var(--fill, 0%) 100% no-repeat,
+    var(--surface-3);
+}
+input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8b5cf6, #d946ef) 0 0 / var(--fill, 0%) 100% no-repeat,
+    var(--surface-3);
+}
+input[type='range']::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  box-shadow: 0 2px 10px #0008;
+  appearance: none;
+}
+input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--accent-strong);
+}
+input[type='range']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.roster-size-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -4px;
+  color: var(--text-3);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A fieldset rendered as a settings group (legend as the group title). */
+.settings-group > .settings-group-legend {
+  float: left;
+  width: 100%;
+  padding: 18px 0 2px;
+  font-size: 17px;
+  line-height: 1.3;
+}
+.settings-group > .settings-group-legend + * {
+  clear: both;
+}
+.settings-group-note {
+  margin: 0;
+  padding: 2px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.starter-pack-fields {
+  margin: 18px 0;
+  padding-bottom: 12px;
+}
+.starter-pack-fields > label:not(.check-label) {
+  margin: 14px 0 8px;
+}
+.starter-pack-fields > input {
+  display: block;
+  width: 100%;
+}
+.starter-pack-fields > p.small {
+  margin: 12px 0 0;
+}
+.setting-control > select {
+  width: 100%;
+}
