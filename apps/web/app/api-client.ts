@@ -9,11 +9,28 @@ export class ApiError extends Error {
   }
 }
 
+/** Bodies above this size are gzip compressed (rosters, sounds). */
+export const compressAbove = 256 * 1024;
+
+async function requestBody(input: unknown): Promise<{ body: BodyInit; gzip: boolean }> {
+  const text = JSON.stringify(input);
+  if (text.length < compressAbove || typeof CompressionStream === 'undefined')
+    return { body: text, gzip: false };
+  // Keeps large uploads under hosting limits (Vercel accepts 4.5 MB per
+  // request); the server checks the decompressed size against the same cap.
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  return { body: await new Response(stream).blob(), gzip: true };
+}
+
 export async function post(path: string, input: unknown) {
+  const { body, gzip } = await requestBody(input);
   const response = await fetch(`/api/${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(gzip ? { 'Content-Encoding': 'gzip' } : {}),
+    },
+    body,
   });
   const result = await response.json();
   if (!response.ok)

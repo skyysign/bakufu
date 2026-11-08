@@ -6,6 +6,8 @@ import { InspectableCard } from './card-inspection';
 import { DiscordAvatar } from './discord-avatar';
 
 const refreshMs = 15000;
+/** Polling pauses after this long without input and resumes on the next one. */
+const idleAfterMs = 5 * 60 * 1000;
 const statusName = (status: PulledCard['status']) =>
   status === 'yours'
     ? 'In your collection'
@@ -58,16 +60,26 @@ export function PullTracker({ realmId, refreshKey }: { realmId: string; refreshK
     void load();
   }, [load, refreshKey]);
   useEffect(() => {
+    let lastInput = Date.now();
+    const idle = () => Date.now() - lastInput > idleAfterMs;
     const tick = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void load();
+      if (document.visibilityState === 'visible' && !idle()) void load();
     }, refreshMs);
     const visible = () => {
       if (document.visibilityState === 'visible') void load();
     };
+    const active = () => {
+      const wasIdle = idle();
+      lastInput = Date.now();
+      if (wasIdle && document.visibilityState === 'visible') void load();
+    };
+    const inputs = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
     document.addEventListener('visibilitychange', visible);
+    for (const input of inputs) window.addEventListener(input, active, { passive: true });
     return () => {
       window.clearInterval(tick);
       document.removeEventListener('visibilitychange', visible);
+      for (const input of inputs) window.removeEventListener(input, active);
     };
   }, [load]);
 

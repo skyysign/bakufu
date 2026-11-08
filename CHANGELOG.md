@@ -7,6 +7,29 @@ know which backups it can restore.
 
 ## Unreleased
 
+### Added
+
+- Free hosting guide for **Vercel + Neon** (`docs/deployment/vercel-neon.md`):
+  Discord sign-in stays the main login, `/bakufu` slash commands are off.
+- Large uploads (rosters, sounds) are gzip-compressed by the browser; the server
+  unpacks them under the same size cap. Fits Vercel's 4.5 MB request limit.
+- `DATABASE_POOL_MAX` sets the database connections per server process (use 3
+  with Neon's pooled connection); idle connections close after 10 seconds.
+- API requests may run up to 60 seconds on hosts that limit request time.
+- `pnpm discord:commands remove` removes `/bakufu` (and the old `/atlas`) from a
+  server.
+
+### Changed
+
+- Live pulls stop checking for new pulls after 5 minutes without input and
+  resume on the next click or key press, so an open tab doesn't keep a
+  sleeping database awake.
+
+### Ideas
+
+- A guided setup (installer or admin GUI) for self-hosters instead of working
+  from the source code.
+
 ## 0.1.0-alpha.1 — 2026-11-08 (private preview)
 
 First tracked version of Bakufu. Newest migration: `0027_admin_collections`.

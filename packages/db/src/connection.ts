@@ -4,7 +4,16 @@ export type Transaction = pg.PoolClient;
 const discordPools = new WeakSet<Database>();
 
 export function createDatabase(connectionString: string): Database {
-  const pool = new pg.Pool({ connectionString, max: 10, connectionTimeoutMillis: 10000 });
+  // DATABASE_POOL_MAX lowers the per-instance pool on serverless hosts (Vercel
+  // with Neon's pooled connection). Idle connections close after 10 seconds so
+  // a scale-to-zero database can suspend between visits.
+  const configured = Number(process.env.DATABASE_POOL_MAX);
+  const pool = new pg.Pool({
+    connectionString,
+    max: Number.isInteger(configured) && configured >= 1 && configured <= 50 ? configured : 10,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
+  });
   pool.on('error', () => {
     // PostgreSQL restarts invalidate idle clients. The pool removes them; query
     // failures still reach their caller. Never log connection strings or values.

@@ -56,6 +56,7 @@ import {
   sessionCookie,
   verifyOrigin,
 } from '../../../lib/server';
+import { readJsonBody } from '../../../lib/request-body';
 import {
   discordErrors,
   discordSettings,
@@ -66,6 +67,9 @@ import {
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Large realm creation can take a while; hosts with per-request limits (such
+// as Vercel) allow up to 60 seconds. Self-hosted servers ignore this.
+export const maxDuration = 60;
 type Context = { params: Promise<{ path: string[] }> };
 const discordCookie = 'card_engine_discord_flow';
 const discordCookieOptions = () => ({
@@ -75,30 +79,7 @@ const discordCookieOptions = () => ({
   maxAge: 600,
 });
 
-async function body(request: Request, maximum = 16384): Promise<Record<string, unknown>> {
-  // Stream a bounded body instead of trusting Content-Length.
-  const reader = request.body?.getReader();
-  if (!reader) throw new GameError('BAD_REQUEST', 'A JSON body is required.');
-  let size = 0;
-  const chunks: Uint8Array[] = [];
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > maximum) {
-      await reader.cancel();
-      throw new GameError('TOO_LARGE', 'Request is too large.', 413);
-    }
-    chunks.push(value);
-  }
-  try {
-    const value = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error();
-    return value;
-  } catch {
-    throw new GameError('BAD_REQUEST', 'A JSON object is required.');
-  }
-}
+const body = readJsonBody;
 function errorResponse(error: unknown) {
   if (error instanceof GameError)
     return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
@@ -177,7 +158,18 @@ export async function POST(request: Request, context: Context) {
       return NextResponse.json(await fetchAnimeCatalog(db(), actor.id, input), {
         headers: { 'Cache-Control': 'private, no-store' },
       });
-    if(path==='ranks/track')return NextResponse.json(await buyRankTrackLevel(db(),actor.id,String(input.realmId??''),String(input.trackId??''),input.level as number,String(input.requestKey??''),(input.expectedRevision as number|undefined)??0));
+    if (path === 'ranks/track')
+      return NextResponse.json(
+        await buyRankTrackLevel(
+          db(),
+          actor.id,
+          String(input.realmId ?? ''),
+          String(input.trackId ?? ''),
+          input.level as number,
+          String(input.requestKey ?? ''),
+          (input.expectedRevision as number | undefined) ?? 0,
+        ),
+      );
     if (path === 'ranks/buy')
       return NextResponse.json(
         await buyCollectorRank(
@@ -507,14 +499,22 @@ export async function GET(request: Request, context: Context) {
     if (path === 'realm-characters/genders') {
       const actor = await requireAccount();
       return NextResponse.json(
-        await realmGenderGaps(db(), actor.id, new URL(request.url).searchParams.get('realmId') ?? ''),
+        await realmGenderGaps(
+          db(),
+          actor.id,
+          new URL(request.url).searchParams.get('realmId') ?? '',
+        ),
         { headers: { 'Cache-Control': 'private, no-store' } },
       );
     }
     if (path === 'realm-characters/artwork') {
       const actor = await requireAccount();
       return NextResponse.json(
-        await realmArtworkGaps(db(), actor.id, new URL(request.url).searchParams.get('realmId') ?? ''),
+        await realmArtworkGaps(
+          db(),
+          actor.id,
+          new URL(request.url).searchParams.get('realmId') ?? '',
+        ),
         { headers: { 'Cache-Control': 'private, no-store' } },
       );
     }

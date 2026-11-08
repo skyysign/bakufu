@@ -1,3 +1,4 @@
+import { gzipSync } from 'node:zlib';
 import {
   adminSection,
   chooseRealmContent,
@@ -505,6 +506,19 @@ try {
     data: { padding: 'x'.repeat(providerCatalogRequestBytes) },
   });
   expect(oversized.status()).toBe(413);
+  // Compressed uploads (as the browser sends large rosters) are parsed, and the
+  // size cap applies after unpacking.
+  const compressed = await context.request.post(`${origin}/api/realms/preview`, {
+    headers: { Origin: origin, 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
+    data: gzipSync(JSON.stringify({ name: 'Compressed preview' })),
+  });
+  // A partial preview request is completed with defaults: 200 means it was read.
+  expect(compressed.status()).toBe(200);
+  const expanding = await context.request.post(`${origin}/api/realms/preview`, {
+    headers: { Origin: origin, 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
+    data: gzipSync(JSON.stringify({ padding: 'x'.repeat(providerCatalogRequestBytes) })),
+  });
+  expect(expanding.status()).toBe(413);
 
   // Every play destination is a distinct route, with no unrelated screen mounted.
   await showScreen(page, 'packs');

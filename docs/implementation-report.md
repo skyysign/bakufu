@@ -3265,3 +3265,55 @@ effect layer is now positioned against and clipped to the dialog).
 | `pnpm test:e2e` | Full production browser suite passed, including the new Player collections and inspector checks. |
 
 The running Docker deployment was not rebuilt. The GitHub remote was not created.
+
+
+## Free hosting preparation: Vercel + Neon
+
+Goal: run Bakufu on free tiers (Vercel Hobby for the website, Neon Free for
+PostgreSQL) with Discord sign-in as the main login and the `/bakufu` slash
+commands off. A review of the code found nothing tied to a long-running server:
+no runtime file writes, no background loops on the server, and only
+transaction-scoped advisory locks (compatible with Neon's PgBouncer pooler).
+The interactions endpoint already returns 503 without `DISCORD_PUBLIC_KEY`, and
+`DISCORD_ADMIN_USER_ID` already bootstraps the first admin through Discord.
+
+Changes:
+
+- `apps/web/lib/request-body.ts` replaces the route's inline body reader. It
+  still streams with a byte cap and now also accepts gzip, recognized by its
+  signature (so it works whether or not a proxy kept `Content-Encoding`), with
+  `maxOutputLength` set to the same cap; an oversized expansion returns 413 and
+  broken compression 400. `post()` compresses JSON bodies over 256 KB with
+  `CompressionStream` (rosters compress about 5–10×).
+- The API route exports `maxDuration = 60` (ignored when self-hosted).
+- `createDatabase` reads `DATABASE_POOL_MAX` (1–50, default 10) and closes idle
+  connections after 10 seconds. The Discord pool's `options` startup parameters
+  would not pass Neon's pooler, which is acceptable because slash commands are
+  off on this setup.
+- The live-pulls panel pauses its 15-second polling after 5 minutes without
+  input, because an always-polling tab would keep Neon's compute awake and use
+  up the free compute hours.
+- `removeDiscordCommands` and `pnpm discord:commands remove` delete `/bakufu`
+  and `/atlas` from one server (fixture-tested; no live Discord call in tests).
+- `docs/deployment/vercel-neon.md` covers Neon, migrations and backups from the
+  PC through Docker, moving an existing game with backup/restore, Vercel settings
+  (root directory `apps/web`, environment variables, function region, Node 24),
+  Discord OAuth with the permanent `*.vercel.app` redirect and
+  `DISCORD_ADMIN_USER_ID`, updates and limits.
+
+Not verified: an actual Vercel or Neon deployment (no account access from here).
+Idea recorded on the roadmap: a guided setup (installer or admin GUI) for
+self-hosters.
+
+The browser suite now also posts a compressed preview through the real server
+(read and answered with 200) and a small compressed body that would unpack past
+the cap (413). The first run expected 400 for the partial preview, but the
+preview completes missing fields with defaults; the expectation was corrected.
+
+| Command | Result |
+| --- | --- |
+| `pnpm lint` / `pnpm typecheck` | Passed. |
+| `pnpm test` | 225 unit tests across 40 files passed. |
+| `pnpm test:integration` | 351 integration tests across 38 files passed. |
+| `pnpm build` | Production build passed. |
+| `pnpm test:e2e` | Full production browser suite passed. |
