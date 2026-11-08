@@ -1,6 +1,5 @@
 export * from './json';
 export * from './csv';
-export * from './wikidata';
 
 export * from './providers';
 export * from './scale';

@@ -5,7 +5,6 @@ import {
   bootstrap,
   createRealm,
   provisionPlayer,
-  fetchAnimeCatalog,
   previewRealmCatalog,
   getRealmView,
   openPack,
@@ -35,89 +34,6 @@ afterAll(async () => {
   await db?.end();
   await server?.stop();
 });
-const input = {
-  ids: ['Q910000001', 'Q910000002'],
-  series: 'Original fixture series',
-  medium: 'manga',
-  revision: 'fixture-1',
-  providerConsent: true,
-};
-const fetcher = () =>
-  vi.fn(
-    async () =>
-      new Response(
-        JSON.stringify({
-          success: 1,
-          entities: {
-            Q910000001: {
-              id: 'Q910000001',
-              type: 'item',
-              labels: { en: { language: 'en', value: 'Original Star Reader' } },
-              image: 'https://private.invalid/image.png',
-            },
-            Q910000002: {
-              id: 'Q910000002',
-              type: 'item',
-              labels: { en: { language: 'en', value: 'Original Cloud Courier' } },
-            },
-          },
-        }),
-        { headers: { 'Content-Type': 'application/json' } },
-      ),
-  );
-describe('authorized opt-in metadata preparation', () => {
-  it('rejects ordinary players before any upstream request', async () => {
-    const stub = fetcher();
-    await expect(fetchAnimeCatalog(db, player, input, stub)).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-    expect(stub).not.toHaveBeenCalled();
-  });
-  it('requires consent and validates selected IDs without upstream access', async () => {
-    const stub = fetcher();
-    for (const selected of [
-      { ...input, providerConsent: false },
-      { ...input, ids: ['http://private.invalid'] },
-      { ...input, ids: Array(26).fill('Q1') },
-    ])
-      await expect(fetchAnimeCatalog(db, admin, selected, stub)).rejects.toThrow();
-    expect(stub).not.toHaveBeenCalled();
-  });
-  it('prepares a playable rights-separated catalog with stable IDs and explicit review', async () => {
-    const stub = fetcher(),
-      catalog = await fetchAnimeCatalog(db, admin, input, stub);
-    expect(stub).toHaveBeenCalledTimes(1);
-    expect(catalog.source).toBe('wikidata');
-    expect(JSON.stringify(catalog)).not.toContain('image');
-    const choice = { format: 'json', data: catalog, rightsConfirmed: true };
-    const preview = await previewRealmCatalog(db, admin, defaultConfig, choice);
-    expect(preview.characterCount).toBe(2);
-    expect(preview.packs.some((pack) => pack.openable)).toBe(true);
-    expect(preview.tiers).toEqual({ common: 2, uncommon: 0, rare: 0, epic: 0, legendary: 0 });
-  });
-  it('throttles operator lookups across requests before calling the provider again', async () => {
-    await db.query('DELETE FROM login_limits');
-    const stub = fetcher();
-    for (let i = 0; i < 6; i++) await fetchAnimeCatalog(db, admin, input, stub);
-    await expect(fetchAnimeCatalog(db, admin, input, stub)).rejects.toMatchObject({
-      code: 'RATE_LIMITED',
-      status: 429,
-    });
-    expect(stub).toHaveBeenCalledTimes(6);
-    await db.query("UPDATE login_limits SET window_start=now()-interval '2 minutes'");
-    await fetchAnimeCatalog(db, admin, input, stub);
-    expect(stub).toHaveBeenCalledTimes(7);
-  });
-  it('returns sanitized provider errors without database or remote response leakage', async () => {
-    await db.query('DELETE FROM login_limits');
-    const stub = vi.fn(async () => new Response('private-upstream-fixture', { status: 503 }));
-    await expect(fetchAnimeCatalog(db, admin, input, stub)).rejects.toMatchObject({
-      code: 'SOURCE_UNAVAILABLE',
-      status: 502,
-    });
-  });
-});
-
 const providerInput = {
   provider: 'anilist',
   ids: [910000001, 910000002],

@@ -111,8 +111,8 @@ before step 3; no application containers start when the command is unrecognized.
    or **Other formats** (up to 25 AniList character IDs, authorized AniList/Jikan
    JSON). For a larger offline test, upload the downloadable 1,000-character test
    catalog through **Your JSON file**. Add missing characters later under
-   **Administration → Characters**. See [providers and scale testing](../content/providers.md)
-   and [Wikidata setup](../content/anime-manga.md). Source imports require explicit
+   **Administration → Characters**. See [providers and scale testing](../content/providers.md).
+   Source imports require explicit
    permission/review. The Jikan-compatible API browser loads series pages as
    needed and can prepare a bounded 1,000-character roster. Remote artwork
    requires a separate permission statement and loads from provider CDNs only

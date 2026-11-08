@@ -580,9 +580,9 @@ immutable receipts and ownership history. Restore verifies rank grants/debits,
 market consent/price/party journals and per-player effective wishlist limits.
 
 Anime/manga is the first provider-focused flow. A portable canonical v1 catalog
-continues to separate source adapters from realm game rules. Explicit instance-
-admin selection of at most 25 Wikidata item IDs loads CC0 structured names only;
-series/medium are operator categorization, popularity is absent and neutral.
+continues to separate source adapters from realm game rules. The first flow,
+explicit selection of at most 25 Wikidata item IDs (CC0 names only), has since
+been removed; MyAnimeList and AniList rosters replaced it.
 Require per-request opt-in, bounded response/time/host, no redirects/retries,
 shared per-admin rate counters, validation and an ordinary creation preview.
 Store stable source IDs/provenance, never remote images, biographies, tokens or

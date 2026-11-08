@@ -42,7 +42,6 @@ import {
   buyCollectorRank,
   buyRankTrackLevel,
   claimGems,
-  fetchAnimeCatalog,
   fetchProviderCatalog,
   listMarket,
   marketCommand,
@@ -152,10 +151,6 @@ export async function POST(request: Request, context: Context) {
       );
     if (path === 'catalog/provider')
       return NextResponse.json(await fetchProviderCatalog(db(), actor.id, input), {
-        headers: { 'Cache-Control': 'private, no-store' },
-      });
-    if (path === 'catalog/wikidata')
-      return NextResponse.json(await fetchAnimeCatalog(db(), actor.id, input), {
         headers: { 'Cache-Control': 'private, no-store' },
       });
     if (path === 'ranks/track')

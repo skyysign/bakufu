@@ -21,9 +21,17 @@ know which backups it can restore.
 
 ### Changed
 
+- Shorter README (features, quick start, hosting, docs index); the detailed
+  status moved to `docs/implementation-status.md` and the product spec to
+  `docs/specification.md`.
 - Live pulls stop checking for new pulls after 5 minutes without input and
   resume on the next click or key press, so an open tab doesn't keep a
   sleeping database awake.
+
+### Removed
+
+- The Wikidata importer and its `/api/catalog/wikidata` endpoint (no longer
+  offered in the realm wizard since the MyAnimeList and AniList rosters).
 
 ### Ideas
 

@@ -188,10 +188,10 @@ not who wished for a character. Current player archive v12 includes value quotes
 only for that player's cards and wishes, plus their own recycling evidence.
 No live provider request or new OAuth token is needed to calculate a value.
 
-The optional anime/manga source flow sends only the operator-selected Wikidata
-IDs to a fixed upstream API, after instance-admin authentication and explicit
-opt-in. It requests CC0 labels only; raw provider responses, images, biographies,
-OAuth credentials and other users' account data are not retained. A separate
-hashed per-admin throttle key shares transient attempt-counter storage. There is
-no background crawl or live upstream request from automated tests. Original demo
+The optional MyAnimeList and AniList roster flows run only after instance-admin
+authentication and explicit opt-in, and only for the selected series or
+characters. Raw provider responses and biographies are not retained (a profile
+check keeps only the detected gender); character artwork is kept as a reference
+URL, never as a copied image. There is no background crawl and no live upstream
+request from automated tests. (The earlier Wikidata lookup has been removed.) Original demo
 art and the silent rare video are served locally with no analytics or remote CDN.

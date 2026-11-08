@@ -1,10 +1,6 @@
 import { createHash } from 'node:crypto';
-import { z } from 'zod';
 import { GameError } from '../../core/src/index';
 import {
-  fetchWikidataCatalog,
-  wikidataCatalogRequestSchema,
-  WikidataCatalogError,
   fetchSelectedProviderCatalog,
   providerCatalogRequestSchema,
   ProviderCatalogError,
@@ -16,45 +12,6 @@ import {
 } from '../../importers/src/index';
 import { requireInstanceAdmin } from './auth';
 import { transaction, type Database } from './connection';
-const requestSchema = wikidataCatalogRequestSchema.extend({ providerConsent: z.literal(true) });
-// Operator-initiated, bounded metadata lookup; no pagination or background crawl.
-export async function fetchAnimeCatalog(
-  db: Database,
-  actorId: string,
-  input: unknown,
-  fetcher: typeof fetch = fetch,
-) {
-  const request = await transaction(db, async (tx) => {
-    await requireInstanceAdmin(tx, actorId);
-    const selected = requestSchema.parse(input);
-    const key = createHash('sha256').update(`wikidata-metadata:${actorId}`).digest('hex');
-    const row = (
-      await tx.query(
-        `INSERT INTO login_limits(email_key,attempts,window_start) VALUES($1,1,now())
-      ON CONFLICT(email_key) DO UPDATE SET attempts=CASE WHEN login_limits.window_start<now()-interval '1 minute' THEN 1 ELSE login_limits.attempts+1 END,
-      window_start=CASE WHEN login_limits.window_start<now()-interval '1 minute' THEN now() ELSE login_limits.window_start END RETURNING attempts`,
-        [key],
-      )
-    ).rows[0];
-    return { selected, allowed: row.attempts <= 6 };
-  });
-  if (!request.allowed)
-    throw new GameError(
-      'RATE_LIMITED',
-      'Too many metadata lookups. Wait one minute before trying again.',
-      429,
-    );
-  const { providerConsent, ...selection } = request.selected;
-  void providerConsent;
-  try {
-    return await fetchWikidataCatalog(selection, fetcher);
-  } catch (error) {
-    if (error instanceof WikidataCatalogError)
-      throw new GameError(error.code, error.message, error.status);
-    throw error;
-  }
-}
-
 // Provider-specific transport/normalization ends at the canonical catalog boundary.
 export async function fetchProviderCatalog(
   db: Database,

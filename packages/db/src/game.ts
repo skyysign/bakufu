@@ -152,9 +152,7 @@ export async function createRealm(
     const importKind =
       catalog === undefined
         ? undefined
-        : parsed.catalog.source === 'wikidata'
-          ? 'wikidata-selection-v1'
-          : parsed.catalog.source === 'anilist'
+        : parsed.catalog.source === 'anilist'
             ? 'anilist-metadata-v1'
             : parsed.catalog.source === 'mal'
               ? 'mal-metadata-v1'

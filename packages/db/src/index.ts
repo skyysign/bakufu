@@ -96,7 +96,6 @@ export { listMarket, marketCommand } from './market';
 export type { MarketListing, MarketPage, MarketResult } from './market';
 export type { CollectorRankResult, CollectorRankView } from '../../core/src/ranks';
 
-export { fetchAnimeCatalog } from './sources';
 
 export { claimGems } from './gem-rewards';
 export type { GemRewardResult, GemRewardView } from '../../core/src/gem-rewards';

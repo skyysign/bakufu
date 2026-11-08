@@ -3317,3 +3317,32 @@ preview completes missing fields with defaults; the expectation was corrected.
 | `pnpm test:integration` | 351 integration tests across 38 files passed. |
 | `pnpm build` | Production build passed. |
 | `pnpm test:e2e` | Full production browser suite passed. |
+
+
+## Repository cleanup and local data reset
+
+At the user's request all realms and their data were removed from the local
+Docker database (`TRUNCATE realms CASCADE`, then a check that every table with a
+`realm_id` is empty); accounts and Discord sign-ins were kept. A full `pg_dump`
+was saved first to `C:PrivateBackupsakufu-before-reset-2026-11-09.dump` (outside
+the repository). Local test leftovers in `.test-data` (old test databases,
+screenshots, logs and one-off scripts, 123 MB) were deleted; a prepared
+1,000-character MyAnimeList roster was kept.
+
+The Wikidata importer, its API endpoint, tests, fixture and guide were removed;
+the wizard had stopped offering it. The README became a short front page
+(features, Discord-first quick start, hosting options, docs index, development);
+its status section moved unchanged to `docs/implementation-status.md` and the
+product specification to `docs/specification.md`, with links rewritten and every
+relative Markdown link checked. AGENTS.md points to the new files; the license
+holder is now "Bakufu contributors". A scan found no unreferenced source files or
+unlinked docs. Package and Docker names still use `card-engine`: renaming the
+Compose project would also rename the database volume, so it was left alone.
+
+| Command | Result |
+| --- | --- |
+| `pnpm lint` / `pnpm typecheck` | Passed. |
+| `pnpm test` | 218 unit tests across 39 files passed (Wikidata tests removed). |
+| `pnpm test:integration` | 346 integration tests across 38 files passed (Wikidata block removed). |
+| `pnpm build` | Production build passed. |
+| `pnpm test:e2e` | Full production browser suite passed. |
