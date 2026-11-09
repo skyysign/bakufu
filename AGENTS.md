@@ -1,6 +1,6 @@
 # AGENTS.md — Instructions for Coding Agents
 
-Read `README.md` and `docs/specification.md` in full before changing code. This file sets implementation rules; the specification describes intended product behavior and `docs/implementation-status.md` what is built. The repository initially contains specifications, not a finished implementation.
+Read `README.md` and `docs/specification.md` in full before changing code. This file sets implementation rules; the specification describes intended product behavior and `docs/implementation-status.md` what is built. The game is playable (alpha); `docs/implementation-status.md` says what is built and what is not.
 
 ## Mission
 
@@ -33,7 +33,7 @@ Use TypeScript, pnpm, PostgreSQL, and a sensible ORM/schema validation tool unle
 
 1. Inspect repository and report what already exists. Do not invent packages or scripts.
 2. Document **one** architecture decision covering realm scoping, unique ownership, and transaction boundaries.
-3. Deliver Milestone 0, then a **thin vertical slice** of Milestone 1 using an original, tiny fixture dataset.
+3. Work in **thin vertical slices** with original, tiny fixture data.
 4. Define and test service functions before adding decorative pack animations or source integrations.
 5. Implement only what is needed for the stated slice; update `docs/implementation-status.md`, `CHANGELOG.md`, the README (when setup changes) and `.env.example` with actual commands.
 6. Run available lint, typecheck, unit, and integration tests. Report the exact commands and whether they passed.

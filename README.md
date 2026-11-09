@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Bakufu: open-source collectible character card game. A fan of five cards from common to legendary." width="100%">
+</p>
+
 # Bakufu
 
 An open-source collectible character card game for Discord communities. Each
@@ -57,9 +61,15 @@ and players with `docker compose exec web pnpm player:create`. More detail:
 
 | Option | Cost | Guide |
 | --- | --- | --- |
-| Free: Vercel + Neon (Discord sign-in, no slash commands) | Free tiers | [vercel-neon.md](docs/deployment/vercel-neon.md) |
+| Free: Vercel + Neon (Discord sign-in, no slash commands, rosters up to about 2,000 characters) | Free tiers | [vercel-neon.md](docs/deployment/vercel-neon.md) |
 | Your own server with Docker and HTTPS | A small VPS | [https.md](docs/deployment/https.md) |
 | Short public test from your PC (Cloudflare quick tunnel) | Free | [public-test.md](docs/deployment/public-test.md) |
+
+> **Free tiers have monthly limits.** Neon Free allows 5 GB of database
+> transfer a month; when it runs out the database pauses until the next month.
+> Keep realms under about 2,000 characters there and check the usage now and
+> then: [how big can a realm get?](docs/deployment/vercel-neon.md#how-big-can-a-realm-get)
+> Self-hosting with Docker has no such limit.
 
 Back up before every update: [backups](docs/deployment/backups.md),
 [scheduled backups](docs/deployment/scheduled-backups.md),
@@ -99,8 +109,7 @@ Back up before every update: [backups](docs/deployment/backups.md),
   [product specification](docs/specification.md),
   [architecture decision](docs/architecture/0001-realm-transactions.md),
   [interface design](docs/design/interface.md),
-  [privacy](docs/privacy.md),
-  [implementation report](docs/implementation-report.md)
+  [privacy](docs/privacy.md)
 
 ## Development
 
@@ -139,7 +148,9 @@ infra/docker/       Production image, HTTPS and backup recipes
 docs/               Guides, rules, architecture and reports
 ```
 
-Contributors and coding agents: read [AGENTS.md](AGENTS.md) first.
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) (coding agents:
+[AGENTS.md](AGENTS.md)). Report security problems privately as described in
+[SECURITY.md](SECURITY.md).
 
 ## Content and rights
 
