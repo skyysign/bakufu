@@ -153,10 +153,10 @@ export async function createRealm(
       catalog === undefined
         ? undefined
         : parsed.catalog.source === 'anilist'
-            ? 'anilist-metadata-v1'
-            : parsed.catalog.source === 'mal'
-              ? 'mal-metadata-v1'
-              : `${preview.kind}-v1`;
+          ? 'anilist-metadata-v1'
+          : parsed.catalog.source === 'mal'
+            ? 'mal-metadata-v1'
+            : `${preview.kind}-v1`;
     const roles = new Map(
       parsed.catalog.characters.map((entry) => [entry.id, entry.role] as const),
     );
@@ -217,7 +217,7 @@ export async function eligiblePool(
   const rows = (
     await tx.query(
       `SELECT c.id,c.source_key AS "sourceKey",c.name,c.series,c.categories,c.tier,c.provenance->'artwork' AS artwork FROM characters c
-    WHERE c.realm_id=$1 AND ($2::text IS NULL OR $2=ANY(c.categories))
+    WHERE c.realm_id=$1 AND c.retired_at IS NULL AND ($2::text IS NULL OR $2=ANY(c.categories))
     AND NOT EXISTS(SELECT 1 FROM cards owned WHERE owned.realm_id=c.realm_id AND owned.character_id=c.id AND owned.recycled_at IS NULL)
     ORDER BY c.id`,
       [realmId, category],
@@ -490,7 +490,7 @@ export async function getRealmView(
           `SELECT c.id,c.source_key AS "sourceKey",c.name,c.series,c.categories,c.tier,c.provenance->'artwork' AS artwork,
         CASE WHEN owned.owner_id=$2 THEN 'yours' WHEN owned.id IS NOT NULL THEN 'claimed' ELSE 'available' END AS status
         FROM characters c LEFT JOIN cards owned ON owned.realm_id=c.realm_id AND owned.character_id=c.id AND owned.recycled_at IS NULL
-        WHERE c.realm_id=$1 ORDER BY c.name,c.id`,
+        WHERE c.realm_id=$1 AND c.retired_at IS NULL ORDER BY c.name,c.id`,
           [realmId, actorId],
         )
       ).rows.map(({ artwork, ...character }) => ({

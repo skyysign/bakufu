@@ -35,6 +35,9 @@ import {
   openPack,
   inviteDiscordPlayer,
   recycleCard,
+  recycleCards,
+  previewCharacterRemoval,
+  removeCharacters,
   buyUpgrade,
   setWishlistEntry,
   previewRealmSettings,
@@ -183,6 +186,19 @@ export async function POST(request: Request, context: Context) {
     if (path === 'admin-collection')
       return NextResponse.json(
         await adminCollectionCommand(db(), actor.id, String(input.realmId ?? ''), input.command),
+      );
+    if (path === 'character-removal/preview')
+      return NextResponse.json(
+        await previewCharacterRemoval(db(), actor.id, String(input.realmId ?? ''), input.selection),
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    if (path === 'character-removal')
+      return NextResponse.json(
+        await removeCharacters(db(), actor.id, String(input.realmId ?? ''), {
+          selection: input.selection,
+          previewHash: input.previewHash,
+          requestKey: input.requestKey,
+        }),
       );
     if (path === 'tier-adjustments/preview')
       return NextResponse.json(
@@ -417,6 +433,14 @@ export async function POST(request: Request, context: Context) {
       );
       return NextResponse.json(result);
     }
+    if (path === 'recycle/batch')
+      return NextResponse.json(
+        await recycleCards(db(), actor.id, String(input.realmId ?? ''), {
+          cardIds: input.cardIds,
+          requestKey: input.requestKey,
+          expectedRevision: (input.expectedRevision as number | undefined) ?? 0,
+        }),
+      );
     return NextResponse.json({ error: 'Route not found.' }, { status: 404 });
   } catch (error) {
     return errorResponse(error);

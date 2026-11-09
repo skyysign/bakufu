@@ -3408,3 +3408,56 @@ showed the tier chip overlapping the text.
 | `pnpm test:integration` | 354 integration tests across 39 files passed (8 new in `tier-adjustments.test.ts`, legacy migration expectations moved to config v12). |
 | `pnpm build` | Production build passed. |
 | `pnpm test:e2e` | Full production browser suite passed, including the new Rarity check (desktop and 390 px mobile). |
+
+## Opening recycling, more media, roster growth and character removal
+
+Requested after the first hosted playtest. Decisions confirmed with the user:
+removing an owned character refunds the owner (card recycled for its value),
+opening recycling has per-card buttons plus a bulk button per rarity, and series
+contribute at most 100 characters.
+
+- **Recycling from the opening window.** Each card in the results has a
+  Recycle button; tiers with two or more cards (common, uncommon, rare) get
+  "Recycle all …" with one confirmation. `recycleCards` (`POST
+  /api/recycle/batch`) recycles up to 50 cards in one transaction (all or
+  nothing), each with its own recycling row and wallet entry under a request key
+  derived from the batch key, so a retry replays the stored results. The
+  per-card core moved into `recycleOwnedCard`; `recycleCard` behaves as before.
+- **More media.** MyAnimeList kinds: TV anime, web anime (ONA, where MyAnimeList
+  lists nearly all donghua; there is no donghua type), anime films, manga,
+  manhwa, manhua, light novels. AniList kinds: anime and manga (all countries,
+  as before), donghua, manhwa, manhua (country of origin) and light novels
+  (format). Works are tagged Web Anime, Anime Film, Manhwa, Manhua, Donghua or
+  Light Novel for packs. The kinds live in `packages/importers/src/media.ts`,
+  free of Node.js imports, because the first build failed when a browser screen
+  imported the importer modules (which use `node:crypto`).
+- **Up to 100 characters per series** in the wizard, the lookup and growth.
+  AniList returns 25 characters per request, so its adapter now pages.
+- **Grow the roster** (Administration → Characters, MyAnimeList realms): the
+  wizard's popular walk for an existing realm. It adds only characters the
+  realm lacks, in saved batches of up to 200, with pause and resume. AniList
+  realms keep the per-series lookup because the AniList adapter deliberately has
+  no bulk walk.
+- **Removing characters** (Administration → Characters, all realms): one
+  character, or every character without a picture, after a review (owners,
+  refunds, skipped market/trade cards, packs left too small). Migration 0029
+  adds `characters.retired_at` and the `character_removals` journal. Removed
+  characters are excluded from draws, the glossary, the realm view, pack sizes,
+  wishes (cleared), rarity counts and admin counts. Owners are refunded through
+  the recycling path. Adding a character again un-retires it; Player collections
+  refuses to restore a removed character's refunded card. Restores check that
+  refunds are real recyclings (or recyclings an admin undid later) and that no
+  removed character is still owned.
+
+Fixes found on the way: a wishlist-era upgrade test runs on a schema without
+`retired_at`, so the wishlist check reads it through `to_jsonb`. The backup
+column gate for characters now composes with the older popularity gate. The MAL
+browser check expected the old lookup size (50).
+
+| Command | Result |
+| --- | --- |
+| `pnpm lint` / `pnpm typecheck` | Passed. |
+| `pnpm test` | 229 unit tests across 41 files passed (new media and paging cases in the importer tests). |
+| `pnpm test:integration` | 359 of 360 passed on the full run; the one failure (wishlist-era upgrade, missing `retired_at`) was fixed and its file re-run green, together with the wishlist tests. New: `batch-recycling.test.ts` (3), `character-removal.test.ts` (3). |
+| `pnpm build` | Production build passed (after the `media.ts` split). |
+| `pnpm test:e2e` | Full browser suite passed, including the new `roster-tools-browser.ts` check (opening recycling, growth with a mocked provider, removal on desktop and phone). |

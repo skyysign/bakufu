@@ -82,7 +82,7 @@ export {
 } from './catalog';
 export type { CatalogPreview } from './catalog';
 export type { RealmView } from './game';
-export { recycleCard } from './recycling';
+export { recycleCard, recycleCards, type BatchRecyclingResult } from './recycling';
 export { buyUpgrade } from './upgrades';
 export { setWishlistEntry } from './wishlist';
 export { previewRealmSettings, applyRealmSettings } from './settings';
@@ -110,6 +110,12 @@ export {
   type AdminCollectionCommand,
 } from './admin-collections';
 export { previewCharacterPopularity, applyCharacterPopularity } from './character-values';
+export {
+  previewCharacterRemoval,
+  removeCharacters,
+  type CharacterRemovalPreview,
+  type CharacterRemovalResult,
+} from './character-removal';
 export {
   realmTierAdjustments,
   previewTierFloors,

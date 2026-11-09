@@ -16,6 +16,8 @@ import type {
   JikanWork,
 } from '../../../packages/importers/src/jikan';
 import { jikanPacing } from '../../../packages/importers/src/jikan-pacing';
+import { jikanMediumInfo } from '../../../packages/importers/src/media';
+import { MediumPicker, malMediumOptions } from './medium-picker';
 
 type Props = {
   onStart: () => void;
@@ -23,14 +25,13 @@ type Props = {
   onLoaded: (data: unknown) => void;
   onFailure: (message: string) => void;
 };
-type Medium = JikanMedium | 'both';
 /** Slider stops: fine steps for small rosters, coarse steps for huge ones. */
 const rosterStops = [
   100, 250, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 7500, 10000, 12500, 15000,
   20000, 25000, 30000, 40000, 50000, 60000, 75000, 100000,
 ].filter((value) => value <= jikanSeedLimits.maxTarget);
 const minimumRoster = 50;
-const perSeriesChoices = [10, 15, 25, 50];
+const perSeriesChoices = [10, 15, 25, 50, 100];
 function nearestStop(value: number) {
   let best = 0;
   rosterStops.forEach((stop, index) => {
@@ -46,7 +47,7 @@ function duration(minutes: number) {
 }
 
 export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
-  const [medium, setMedium] = useState<Medium>('anime'),
+  const [media, setMedia] = useState<JikanMedium[]>(['anime']),
     [browseMedium, setBrowseMedium] = useState<JikanMedium>('anime'),
     [service, setService] = useState<'tenrai' | 'jikan'>('tenrai'),
     [consent, setConsent] = useState(false),
@@ -108,8 +109,8 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
     if (!response.ok) throw new Error(result.error ?? 'The provider could not return this page.');
     return result as JikanApiResult;
   }
-  function freshSeed(nextMedium = medium, nextTarget = target, nextPerWork = perWork) {
-    return newJikanSeed(nextMedium, nextTarget, service, nextPerWork);
+  function freshSeed(nextMedia = media, nextTarget = target, nextPerWork = perWork) {
+    return newJikanSeed(nextMedia, nextTarget, service, nextPerWork);
   }
   async function browse(nextPage: number) {
     stopped.current = false;
@@ -147,17 +148,18 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
               ...freshSeed(),
               // Selected series only: no popular pages are requested.
               cursors: Object.fromEntries(
-                (medium === 'both' ? (['anime', 'manga'] as const) : [medium]).map((value) => [
-                  value,
-                  { page: 0, hasNextPage: false },
-                ]),
+                media.map((value) => [value, { page: 0, hasNextPage: false }]),
               ),
               queue: selected,
             }
           : freshSeed();
     setSeed(current);
     try {
-      for (let next = nextJikanStep(current); next && !stopped.current; next = nextJikanStep(current)) {
+      for (
+        let next = nextJikanStep(current);
+        next && !stopped.current;
+        next = nextJikanStep(current)
+      ) {
         if (next.step === 'works') {
           const result = await step(next.medium, { step: 'works', page: next.page });
           if (result.kind !== 'works') throw new Error('Unsupported provider response.');
@@ -248,19 +250,21 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
       }),
     };
   }
-  function reset(nextMedium = medium, nextTarget = target, nextPerWork = perWork) {
+  function reset(nextMedia = media, nextTarget = target, nextPerWork = perWork) {
     genders.current = new Map();
-    setSeed(freshSeed(nextMedium, nextTarget, nextPerWork));
+    setSeed(freshSeed(nextMedia, nextTarget, nextPerWork));
     setMessage('');
     onEdit();
   }
   function download() {
     const url = URL.createObjectURL(
-        new Blob([JSON.stringify(withGenders(seed.catalog), null, 2)], { type: 'application/json' }),
+        new Blob([JSON.stringify(withGenders(seed.catalog), null, 2)], {
+          type: 'application/json',
+        }),
       ),
       link = document.createElement('a');
     link.href = url;
-    link.download = `mal-${medium}-${seed.catalog.characters.length}.catalog.json`;
+    link.download = `mal-${media.join('-')}-${seed.catalog.characters.length}.catalog.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -289,7 +293,7 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
                 setSelected([]);
                 setPage(0);
                 setHasNext(true);
-                setSeed(newJikanSeed(medium, target, next, perWork));
+                setSeed(newJikanSeed(media, target, next, perWork));
                 setMessage('');
                 onEdit();
               }}
@@ -298,28 +302,26 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
               <option value="jikan">Jikan legacy public API</option>
             </select>
           </div>
-          <div>
-            <label htmlFor="jikan-medium">Catalog medium</label>
-            <select
-              id="jikan-medium"
-              value={medium}
-              onChange={(event) => {
-                const next = event.target.value as Medium;
-                setMedium(next);
-                setBrowseMedium(next === 'manga' ? 'manga' : 'anime');
-                setWorks([]);
-                setSelected([]);
-                setPage(0);
-                setHasNext(true);
-                reset(next);
-              }}
-            >
-              <option value="anime">Anime</option>
-              <option value="manga">Manga</option>
-              <option value="both">Anime and manga</option>
-            </select>
-          </div>
         </div>
+        <MediumPicker
+          name="jikan-medium"
+          legend="Kinds of series"
+          options={malMediumOptions}
+          value={media}
+          onChange={(next) => {
+            setMedia(next);
+            setBrowseMedium(next.includes(browseMedium) ? browseMedium : next[0]);
+            setWorks([]);
+            setSelected([]);
+            setPage(0);
+            setHasNext(true);
+            reset(next);
+          }}
+        />
+        <p className="field-help">
+          MyAnimeList has no separate donghua type: Chinese animation is listed as web anime (ONA),
+          next to some Japanese web series.
+        </p>
         <label className="check-label">
           <input
             type="checkbox"
@@ -329,8 +331,8 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
               if (!event.target.checked) onEdit();
             }}
           />
-          Use {service === 'tenrai' ? 'Tenrai' : 'Jikan'} for this setup; I reviewed the provider&apos;s
-          usage requirements.
+          Use {service === 'tenrai' ? 'Tenrai' : 'Jikan'} for this setup; I reviewed the
+          provider&apos;s usage requirements.
         </label>
         <p className="field-help">
           <a
@@ -396,9 +398,8 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
         <div className="provider-mode">
           <h4>Popular roster</h4>
           <p className="field-help">
-            Walks the most popular {medium === 'both' ? 'anime and manga' : medium} series in order
-            and takes each series’ main characters first. Fewer characters per series means more
-            series — and more variety.
+            Walks the most popular series of each chosen kind in turn and takes each series’ main
+            characters first. Fewer characters per series means more series — and more variety.
           </p>
           <div className="provider-grid">
             <div className="roster-size">
@@ -421,7 +422,7 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
                         next <= jikanSeedLimits.maxTarget
                       ) {
                         setTarget(next);
-                        reset(medium, next);
+                        reset(media, next);
                       }
                     }}
                     onBlur={() => setTargetText(String(target))}
@@ -448,7 +449,7 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
                   const next = rosterStops[Number(event.target.value)];
                   setTarget(next);
                   setTargetText(String(next));
-                  reset(medium, next);
+                  reset(media, next);
                 }}
               />
               <div className="roster-size-scale" aria-hidden="true">
@@ -466,7 +467,7 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
                 onChange={(event) => {
                   const next = Number(event.target.value);
                   setPerWork(next);
-                  reset(medium, target, next);
+                  reset(media, target, next);
                 }}
               >
                 {perSeriesChoices.map((size) => (
@@ -505,9 +506,9 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
         </div>
         <div className="provider-mode">
           <h4>Choose series</h4>
-          {medium === 'both' && (
+          {media.length > 1 && (
             <div className="segmented" role="group" aria-label="Search in">
-              {(['anime', 'manga'] as const).map((value) => (
+              {media.map((value) => (
                 <button
                   type="button"
                   key={value}
@@ -519,7 +520,7 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
                     setHasNext(true);
                   }}
                 >
-                  {value === 'anime' ? 'Anime' : 'Manga'}
+                  {jikanMediumInfo[value].label.replace(/ \(.*\)|,.*$/, '')}
                 </button>
               ))}
             </div>
@@ -536,7 +537,12 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
             placeholder="Search, or leave blank for popular series"
           />
           <div className="recycle-actions">
-            <button type="button" className="secondary" disabled={!allowed} onClick={() => browse(1)}>
+            <button
+              type="button"
+              className="secondary"
+              disabled={!allowed}
+              onClick={() => browse(1)}
+            >
               Browse series
             </button>
             {page > 1 && (
@@ -637,11 +643,11 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
       </div>
       <p role="status">{message}</p>
       <p className="field-help">
-        Requests are paced below {service === 'tenrai' ? 'Tenrai' : 'Jikan'}&apos;s published
-        limits (one every {(jikanPacing[service].delayMs / 1000).toFixed(2)} s, at most{' '}
+        Requests are paced below {service === 'tenrai' ? 'Tenrai' : 'Jikan'}&apos;s published limits
+        (one every {(jikanPacing[service].delayMs / 1000).toFixed(2)} s, at most{' '}
         {jikanPacing[service].perMinute} per minute shared across admins), stop on errors or rate
-        limits and never run in the background — keep this page open while preparing; you can
-        pause and resume. A {target.toLocaleString()}-character roster takes roughly{' '}
+        limits and never run in the background — keep this page open while preparing; you can pause
+        and resume. A {target.toLocaleString()}-character roster takes roughly{' '}
         {duration(
           (((target / Math.max(5, perWork * 0.8)) * 1.05 + (detectGender ? target : 0)) *
             jikanPacing[service].delayMs) /

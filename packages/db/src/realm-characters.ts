@@ -99,11 +99,14 @@ async function catalogContext(
     )
   ).rows[0];
   const totals = (
-    await tx.query('SELECT count(*)::int AS count FROM characters WHERE realm_id=$1', [realmId])
+    await tx.query(
+      'SELECT count(*)::int AS count FROM characters WHERE realm_id=$1 AND retired_at IS NULL',
+      [realmId],
+    )
   ).rows[0];
   const cohort = (
     await tx.query(
-      `SELECT popularity FROM characters WHERE realm_id=$1 AND popularity IS NOT NULL
+      `SELECT popularity FROM characters WHERE realm_id=$1 AND popularity IS NOT NULL AND retired_at IS NULL
       AND split_part(source_key,':',1)=$2 ORDER BY popularity DESC`,
       [realmId, primary?.source ?? ''],
     )
@@ -113,7 +116,7 @@ async function catalogContext(
       ? (
           await tx.query(
             `SELECT (provenance->>'standing')::float8 AS standing FROM characters
-            WHERE realm_id=$1 AND provenance ? 'standing' ORDER BY 1 DESC`,
+            WHERE realm_id=$1 AND provenance ? 'standing' AND retired_at IS NULL ORDER BY 1 DESC`,
             [realmId],
           )
         ).rows.map((row) => Number(row.standing))
@@ -206,7 +209,7 @@ export async function realmCharacterSummary(
         await tx.query(
           `SELECT count(*)::int AS count,
           mode() WITHIN GROUP (ORDER BY provenance->'artwork'->>'permission') AS permission
-          FROM characters WHERE realm_id=$1 AND provenance ? 'artwork'`,
+          FROM characters WHERE realm_id=$1 AND provenance ? 'artwork' AND retired_at IS NULL`,
           [realmId],
         )
       ).rows[0];
@@ -240,7 +243,7 @@ export async function checkRealmCharacters(
       const present = new Set(
         (
           await tx.query(
-            'SELECT source_key FROM characters WHERE realm_id=$1 AND source_key=ANY($2::text[])',
+            'SELECT source_key FROM characters WHERE realm_id=$1 AND source_key=ANY($2::text[]) AND retired_at IS NULL',
             [realmId, request.characters.map((character) => character.sourceKey)],
           )
         ).rows.map((row) => row.source_key as string),
@@ -292,11 +295,40 @@ export async function addRealmCharacters(
       );
     const existing = (
       await tx.query(
-        'SELECT id,source_key FROM characters WHERE realm_id=$1 AND (source_key=ANY($2::text[]) OR id=ANY($3::uuid[]))',
+        'SELECT id,source_key,name,series,tier,retired_at IS NOT NULL AS retired FROM characters WHERE realm_id=$1 AND (source_key=ANY($2::text[]) OR id=ANY($3::uuid[]))',
         [realmId, keys, ids],
       )
-    ).rows as { id: string; source_key: string }[];
+    ).rows as {
+      id: string;
+      source_key: string;
+      name: string;
+      series: string;
+      tier: Tier;
+      retired: boolean;
+    }[];
     const presentKeys = new Set(existing.map((row) => row.source_key));
+    // A removed character that is added again comes back with its saved tier.
+    const revived = existing.filter((row) => row.retired && keys.includes(row.source_key));
+    if (revived.length) {
+      const artwork = new Map(
+        request.characters
+          .filter((character) => character.artwork)
+          .map((character) => [character.sourceKey, character.artwork]),
+      );
+      await tx.query(
+        `UPDATE characters c SET retired_at=NULL,
+        provenance=CASE WHEN x.artwork IS NULL OR c.provenance ? 'artwork' THEN c.provenance
+          ELSE c.provenance||jsonb_build_object('artwork',x.artwork) END
+        FROM jsonb_to_recordset($2::jsonb) AS x(id uuid,artwork jsonb)
+        WHERE c.realm_id=$1 AND c.id=x.id`,
+        [
+          realmId,
+          JSON.stringify(
+            revived.map((row) => ({ id: row.id, artwork: artwork.get(row.source_key) ?? null })),
+          ),
+        ],
+      );
+    }
     // A row found only by ID belongs to a different source key: never merge them.
     for (const row of existing)
       if (!keys.includes(row.source_key))
@@ -322,7 +354,7 @@ export async function addRealmCharacters(
       for (const row of (
         await tx.query(
           `SELECT series,popularity FROM characters WHERE realm_id=$1 AND popularity IS NOT NULL
-          AND series=ANY($2::text[]) ORDER BY popularity DESC`,
+          AND retired_at IS NULL AND series=ANY($2::text[]) ORDER BY popularity DESC`,
           [realmId, [...new Set(fresh.map((character) => character.series))]],
         )
       ).rows)
@@ -387,14 +419,23 @@ export async function addRealmCharacters(
       );
     return {
       ok: true,
-      added: rows.map((row) => ({
-        id: row.id,
-        sourceKey: row.source_key,
-        name: row.name,
-        series: row.series,
-        tier: row.tier as Tier,
-      })),
-      alreadyPresent: request.characters.length - fresh.length,
+      added: [
+        ...revived.map((row) => ({
+          id: row.id,
+          sourceKey: row.source_key,
+          name: row.name,
+          series: row.series,
+          tier: row.tier,
+        })),
+        ...rows.map((row) => ({
+          id: row.id,
+          sourceKey: row.source_key,
+          name: row.name,
+          series: row.series,
+          tier: row.tier as Tier,
+        })),
+      ],
+      alreadyPresent: request.characters.length - fresh.length - revived.length,
       newCategories: [
         ...new Set(rows.flatMap((row) => row.categories).filter((c) => !knownCategories.has(c))),
       ].sort(),
@@ -436,7 +477,7 @@ export async function realmArtworkGaps(
       const context = await catalogContext(tx, actorId, realmId, false);
       const missing = (
         await tx.query(
-          "SELECT source_key FROM characters WHERE realm_id=$1 AND NOT (provenance ? 'artwork') ORDER BY source_key",
+          "SELECT source_key FROM characters WHERE realm_id=$1 AND retired_at IS NULL AND NOT (provenance ? 'artwork') ORDER BY source_key",
           [realmId],
         )
       ).rows.map((row) => row.source_key as string);
@@ -497,7 +538,7 @@ export async function backfillRealmArtwork(
       ).rowCount ?? 0;
     const remaining = (
       await tx.query(
-        "SELECT count(*)::int AS count FROM characters WHERE realm_id=$1 AND NOT (provenance ? 'artwork')",
+        "SELECT count(*)::int AS count FROM characters WHERE realm_id=$1 AND retired_at IS NULL AND NOT (provenance ? 'artwork')",
         [realmId],
       )
     ).rows[0].count as number;
@@ -530,7 +571,7 @@ async function genderCounts(tx: Transaction, realmId: string) {
   const row = (
     await tx.query(
       `SELECT count(*) FILTER(WHERE 'Female'=ANY(categories))::int AS female,
-      count(*) FILTER(WHERE 'Male'=ANY(categories))::int AS male FROM characters WHERE realm_id=$1`,
+      count(*) FILTER(WHERE 'Male'=ANY(categories))::int AS male FROM characters WHERE realm_id=$1 AND retired_at IS NULL`,
       [realmId],
     )
   ).rows[0];
@@ -550,7 +591,7 @@ export async function realmGenderGaps(
       const context = await catalogContext(tx, actorId, realmId, false);
       const pending = (
         await tx.query(
-          `SELECT source_key FROM characters WHERE realm_id=$1 AND NOT (provenance ? 'genderCheckedAt')
+          `SELECT source_key FROM characters WHERE realm_id=$1 AND retired_at IS NULL AND NOT (provenance ? 'genderCheckedAt')
           AND NOT ('Female'=ANY(categories) OR 'Male'=ANY(categories))
           ORDER BY popularity DESC NULLS LAST,source_key`,
           [realmId],

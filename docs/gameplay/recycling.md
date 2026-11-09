@@ -35,6 +35,17 @@ releases cards, and rewards or depleted/custom pools may allow profitable
 recycling; see the [economy limits](rarity-economy.md#economy-limits).
 Recycling does not award XP or reset a pack cooldown.
 
+## Recycling from the opening window
+
+The opening results show a **Recycle +N** button under every card, so a pull
+you don't want can go straight back. For openings with at least two cards of
+the same common, uncommon or rare tier there is also **Recycle all common
+(5) +N**, which asks once to confirm. Each card's value is the same as in the
+collection. The bulk button uses `POST /api/recycle/batch` (`recycleCards`):
+all cards in one transaction (if one can't be recycled, none is), every card
+with its own recycling journal and wallet entry, and a retry with the same
+request key replays the stored results. Up to 50 cards per batch.
+
 ## Configuration and operation contracts
 
 Realm configuration schema version **2** introduced recycling rewards; current

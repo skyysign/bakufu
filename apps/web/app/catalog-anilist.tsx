@@ -1,4 +1,6 @@
 'use client';
+import { aniListMediumOptions, mediumLabel } from './medium-picker';
+import type { AniListMedium } from '../../../packages/importers/src/media';
 import { useEffect, useRef, useState } from 'react';
 import {
   aniListMaxSelectedSeries,
@@ -16,7 +18,7 @@ type Props = {
   onLoaded: (data: unknown) => void;
   onFailure: (message: string) => void;
 };
-type Medium = 'anime' | 'manga';
+type Medium = AniListMedium;
 type Selected = AniListWork & { medium: Medium };
 const emptyCatalog = (): AniListCatalog => ({
   schemaVersion: 1,
@@ -55,7 +57,10 @@ export function CatalogAniList({ onStart, onEdit, onLoaded, onFailure }: Props) 
       controller.current?.abort();
     };
   }, []);
-  async function step(stepMedium: Medium, input: Record<string, unknown>): Promise<AniListApiResult> {
+  async function step(
+    stepMedium: Medium,
+    input: Record<string, unknown>,
+  ): Promise<AniListApiResult> {
     const remaining = Math.max(0, 2500 - (performance.now() - lastRequest.current));
     if (remaining) await new Promise((resolve) => setTimeout(resolve, remaining));
     if (stopped.current) throw new Error('Preparation paused. Resume when ready.');
@@ -238,8 +243,11 @@ export function CatalogAniList({ onStart, onEdit, onLoaded, onFailure }: Props) 
                 setHasNext(true);
               }}
             >
-              <option value="anime">Anime</option>
-              <option value="manga">Manga</option>
+              {aniListMediumOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -252,7 +260,7 @@ export function CatalogAniList({ onStart, onEdit, onLoaded, onFailure }: Props) 
                 edited();
               }}
             >
-              {[10, 15, 25].map((size) => (
+              {[10, 15, 25, 50, 100].map((size) => (
                 <option key={size} value={size}>
                   Up to {size}
                 </option>
@@ -299,11 +307,13 @@ export function CatalogAniList({ onStart, onEdit, onLoaded, onFailure }: Props) 
         {works.length > 0 && (
           <fieldset className="series-choices">
             <legend>
-              {medium === 'anime' ? 'Anime' : 'Manga'} · page {page} · {selected.length} /{' '}
-              {aniListMaxSelectedSeries} selected
+              {mediumLabel(medium)} · page {page} · {selected.length} / {aniListMaxSelectedSeries}{' '}
+              selected
             </legend>
             {works.map((work) => {
-              const checked = selected.some((item) => item.id === work.id && item.medium === medium);
+              const checked = selected.some(
+                (item) => item.id === work.id && item.medium === medium,
+              );
               return (
                 <label className="check-label" key={work.id}>
                   <input
@@ -314,7 +324,9 @@ export function CatalogAniList({ onStart, onEdit, onLoaded, onFailure }: Props) 
                       setSelected((current) =>
                         event.target.checked
                           ? [...current, { ...work, medium }]
-                          : current.filter((item) => !(item.id === work.id && item.medium === medium)),
+                          : current.filter(
+                              (item) => !(item.id === work.id && item.medium === medium),
+                            ),
                       );
                       edited();
                     }}
@@ -329,9 +341,7 @@ export function CatalogAniList({ onStart, onEdit, onLoaded, onFailure }: Props) 
           </fieldset>
         )}
         {selected.length > 0 && (
-          <p className="field-help">
-            Selected: {selected.map((work) => work.title).join(', ')}
-          </p>
+          <p className="field-help">Selected: {selected.map((work) => work.title).join(', ')}</p>
         )}
         <button
           type="button"

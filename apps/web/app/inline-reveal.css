@@ -263,3 +263,57 @@ section.pack-reveal.opening-room-stage {
     width: 215px;
   }
 }
+
+/* Recycling straight from the opening results. */
+.reveal-summary .reveal-card > .recycle-button,
+.reveal-summary .reveal-card > .reveal-recycled {
+  width: 100%;
+  margin-top: 10px;
+}
+.reveal-summary .reveal-card > .recycle-button {
+  justify-content: flex-start;
+}
+.reveal-recycled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  margin: 0;
+  color: var(--gem);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.reveal-recycled .game-icon {
+  width: 16px;
+  height: 16px;
+}
+.reveal-bulk-recycle {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: -12px 0 20px;
+}
+.reveal-bulk-recycle button {
+  min-height: 42px;
+  gap: 6px;
+}
+.reveal-bulk-recycle .recycle-reward {
+  margin-left: 6px;
+}
+.reveal-bulk-recycle .game-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--gem);
+}
+.reveal-bulk-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reveal-recycle-note {
+  text-align: center;
+  margin: 0 0 16px;
+}

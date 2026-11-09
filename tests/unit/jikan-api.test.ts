@@ -293,10 +293,55 @@ describe('on-demand Jikan catalog boundary', () => {
     if (limited.kind !== 'characters') throw new Error('Unexpected result.');
     expect(limited.catalog.characters).toHaveLength(10);
     expect(limited.medium).toBe('anime');
-    for (const perWork of [4, 51])
+    for (const perWork of [4, 101])
       expect(
         jikanApiRequestSchema.safeParse({ ...common, step: 'characters', work, perWork }).success,
       ).toBe(false);
+    // Long series: up to 100 characters per series.
+    const long = await fetchJikanApiStep(
+      { ...common, step: 'characters', work, perWork: 100 },
+      async () => response(characters(0, 150)),
+    );
+    if (long.kind !== 'characters') throw new Error('Unexpected result.');
+    expect(long.catalog.characters).toHaveLength(100);
+  });
+  it('walks manhwa, manhua, web anime, films and light novels with their MAL type', async () => {
+    const requested: string[] = [];
+    const fetcher = async (url: string | URL | Request) => {
+      requested.push(String(url));
+      return String(url).includes('/characters')
+        ? response(characters(0, 3))
+        : response({
+            data: [{ mal_id: work.id, title: work.title, genres: [{ name: 'Action' }] }],
+            pagination: { has_next_page: false },
+          });
+    };
+    const expectations = [
+      ['manhwa', '/manga?', 'type=manhwa', 'Manhwa'],
+      ['manhua', '/manga?', 'type=manhua', 'Manhua'],
+      ['lightnovel', '/manga?', 'type=lightnovel', 'Light Novel'],
+      ['ona', '/anime?', 'type=ona', 'Web Anime'],
+      ['movie', '/anime?', 'type=movie', 'Anime Film'],
+    ] as const;
+    for (const [medium, path, type, category] of expectations) {
+      const result = await fetchJikanApiStep(
+        { ...common, medium, step: 'works', page: 1 },
+        fetcher,
+      );
+      if (result.kind !== 'works') throw new Error('Unexpected result.');
+      expect(result.medium).toBe(medium);
+      expect(result.works[0].categories).toContain(category);
+      expect(requested.at(-1)).toContain(path);
+      expect(requested.at(-1)).toContain(type);
+    }
+    // A manhwa's characters come from MyAnimeList's manga list (shared ID space).
+    await fetchJikanApiStep({ ...common, medium: 'manhwa', step: 'characters', work }, fetcher);
+    expect(requested.at(-1)).toContain(`/manga/${work.id}/characters`);
+    // Plain TV anime and manga keep their categories unchanged.
+    const tv = await fetchJikanApiStep({ ...common, step: 'works', page: 1 }, fetcher);
+    if (tv.kind !== 'works') throw new Error('Unexpected result.');
+    expect(tv.works[0].categories).toEqual(['Action']);
+    expect(requested.at(-1)).toContain('type=tv');
   });
   it('walks popular anime and manga pages round-robin with separate ID namespaces', () => {
     let state = newJikanSeed('both', 4, 'tenrai', 5);

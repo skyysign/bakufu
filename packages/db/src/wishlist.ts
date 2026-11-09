@@ -42,10 +42,11 @@ export async function setWishlistEntry(
     }
     if (
       !(
-        await tx.query('SELECT 1 FROM characters WHERE realm_id=$1 AND id=$2', [
-          realmId,
-          characterId,
-        ])
+        await tx.query(
+          // Read through to_jsonb: older schemas (upgrade tests) have no retired_at yet.
+          "SELECT 1 FROM characters c WHERE c.realm_id=$1 AND c.id=$2 AND (to_jsonb(c)->>'retired_at') IS NULL",
+          [realmId, characterId],
+        )
       ).rowCount
     )
       throw new GameError('NOT_FOUND', 'Character not found in this realm.', 404);

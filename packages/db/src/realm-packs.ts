@@ -55,12 +55,7 @@ const additionSchema = z.strictObject({
     .max(maximumRealmCategoryPacks),
 });
 
-async function requireRealmAdmin(
-  tx: Transaction,
-  actorId: string,
-  realmId: string,
-  lock: boolean,
-) {
+async function requireRealmAdmin(tx: Transaction, actorId: string, realmId: string, lock: boolean) {
   const realm = (
     await tx.query(`SELECT config FROM realms WHERE id=$1${lock ? ' FOR UPDATE' : ''}`, [realmId])
   ).rows[0];
@@ -73,7 +68,7 @@ async function categorySizes(tx: Transaction, realmId: string) {
   return (
     await tx.query(
       `SELECT category,count(*)::int AS size FROM characters c, unnest(c.categories) AS category
-      WHERE c.realm_id=$1 GROUP BY category ORDER BY size DESC,category`,
+      WHERE c.realm_id=$1 AND c.retired_at IS NULL GROUP BY category ORDER BY size DESC,category`,
       [realmId],
     )
   ).rows as { category: string; size: number }[];
@@ -100,7 +95,10 @@ export async function realmPackPlan(
       );
       const byCategory = new Map(packs.map((pack) => [pack.category, pack]));
       const catalogSize = (
-        await tx.query('SELECT count(*)::int AS size FROM characters WHERE realm_id=$1', [realmId])
+        await tx.query(
+          'SELECT count(*)::int AS size FROM characters WHERE realm_id=$1 AND retired_at IS NULL',
+          [realmId],
+        )
       ).rows[0].size as number;
       return {
         packs,
@@ -155,9 +153,7 @@ export async function addRealmPacks(
       all.filter((pack) => pack.retired).map((pack) => [pack.category, pack]),
     );
     const presented = presentPacks(saved);
-    const takenNames = new Set(
-      [...saved, ...presented].map((pack) => pack.name.toLowerCase()),
-    );
+    const takenNames = new Set([...saved, ...presented].map((pack) => pack.name.toLowerCase()));
     const savedByCategory = new Map(saved.map((pack) => [pack.category, pack]));
     const sizes = new Map(
       (await categorySizes(tx, realmId)).map((row) => [row.category, row.size] as const),
@@ -247,7 +243,11 @@ export async function retireRealmPack(
     ).rows[0] as { id: string; name: string; category: string | null } | undefined;
     if (!pack) throw new GameError('NOT_FOUND', 'Pack not found in this realm.', 404);
     if (pack.category === null)
-      throw new GameError('PACK_REQUIRED', 'All Characters is always available and cannot be removed.', 409);
+      throw new GameError(
+        'PACK_REQUIRED',
+        'All Characters is always available and cannot be removed.',
+        409,
+      );
     await tx.query('UPDATE packs SET retired_at=clock_timestamp() WHERE realm_id=$1 AND id=$2', [
       realmId,
       id,

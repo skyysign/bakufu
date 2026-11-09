@@ -1199,3 +1199,40 @@ li[data-present='true'] .cast-item {
     justify-self: start;
   }
 }
+
+/* Administration → Characters → Grow the roster. */
+.roster-growth progress {
+  width: 100%;
+  height: 10px;
+  margin-top: 10px;
+  accent-color: var(--accent);
+}
+.roster-growth .provider-grid {
+  margin-top: 10px;
+}
+.roster-growth-note {
+  margin-top: 14px;
+}
+
+/* Administration → Characters → Remove characters. */
+.removal-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 8px 0 14px;
+}
+.removal-quick p {
+  margin: 0;
+}
+.removal-review {
+  display: grid;
+  gap: 10px;
+}
+.removal-review p {
+  margin: 0;
+}
+.removal-warning {
+  color: var(--warning, #f0b45a);
+}

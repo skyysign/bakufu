@@ -7,6 +7,7 @@ import { validateRankBackup } from './rank-backup';
 import { validateRankTrackBackup } from './rank-track-backup';
 import { validateEconomyRebalances } from './economy-preset';
 import { validateTierAdjustments } from './tier-adjustments';
+import { validateCharacterRemovals } from './character-removal';
 import { effectiveMemberConfig } from './rank-track-state';
 import { validateMarketBackup } from './market-backup';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from 'node:crypto';
@@ -37,6 +38,7 @@ const columns = {
     'tier',
     'provenance',
     'popularity',
+    'retired_at',
   ],
   packs: ['realm_id', 'id', 'name', 'category', 'retired_at'],
   openings: [
@@ -256,6 +258,17 @@ const columns = {
     'result',
     'created_at',
   ],
+  character_removals: [
+    'realm_id',
+    'id',
+    'account_id',
+    'request_key',
+    'preview_hash',
+    'character_ids',
+    'refunds',
+    'result',
+    'created_at',
+  ],
   market_listings: [
     'realm_id',
     'id',
@@ -346,6 +359,10 @@ function columnsForMigrations(
   )
     throw new Error('Unsupported backup schema. Use the matching source release.');
   const source: Partial<Record<keyof typeof columns, readonly string[]>> = { ...columns };
+  if (!migrations.some((migration) => migration.name === '0029_character_removals.sql')) {
+    delete source.character_removals;
+    source.characters = columns.characters.filter((field) => field !== 'retired_at');
+  }
   if (!migrations.some((migration) => migration.name === '0028_tier_adjustments.sql'))
     delete source.tier_adjustments;
   if (!migrations.some((migration) => migration.name === '0027_admin_collections.sql')) {
@@ -359,7 +376,9 @@ function columnsForMigrations(
   if (!migrations.some((migration) => migration.name === '0024_pull_feed_tier_sounds.sql'))
     delete source.realm_tier_sounds;
   if (!migrations.some((migration) => migration.name === '0023_character_values.sql'))
-    source.characters = columns.characters.filter((field) => field !== 'popularity');
+    source.characters = (source.characters ?? columns.characters).filter(
+      (field) => field !== 'popularity',
+    );
   if (!migrations.some((migration) => migration.name === '0022_economy_rebalances.sql'))
     delete source.economy_rebalances;
   if (!migrations.some((migration) => migration.name === '0020_rank_tracks.sql'))
@@ -590,7 +609,8 @@ export async function restoreBackup(
           `INSERT INTO ${table} (${fields.join(',')}) VALUES (${fields.map((_, i) => `$${i + 1}`).join(',')})`,
           fields.map((field) =>
             (table === 'economy_rebalances' && field === 'tier_changes') ||
-            (table === 'tier_adjustments' && field === 'changes')
+            (table === 'tier_adjustments' && field === 'changes') ||
+            (table === 'character_removals' && (field === 'character_ids' || field === 'refunds'))
               ? JSON.stringify(row[field])
               : table === 'realms' && field === 'config'
                 ? parseRealmConfig(row[field])
@@ -705,6 +725,7 @@ export async function restoreBackup(
     await validateRankTrackBackup(tx);
     await validateEconomyRebalances(tx);
     await validateTierAdjustments(tx);
+    await validateCharacterRemovals(tx);
     await validateGemRewardBackup(tx);
     await validateAdminGemGrants(tx);
     await validateArtworkReferences(tx);

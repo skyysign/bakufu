@@ -125,7 +125,7 @@ async function characterRows(tx: Transaction, realmId: string, characterId?: str
       `SELECT c.id,c.name,c.series,c.source_key,c.tier,c.popularity::text AS popularity,
       c.provenance->>'tierBeforeAdjustment' AS base,c.provenance->>'tierOverride' AS override,
       EXISTS(SELECT 1 FROM cards o WHERE o.realm_id=c.realm_id AND o.character_id=c.id AND o.recycled_at IS NULL) AS owned
-      FROM characters c WHERE c.realm_id=$1${characterId ? ' AND c.id=$2' : ''} ORDER BY c.id`,
+      FROM characters c WHERE c.realm_id=$1 AND c.retired_at IS NULL${characterId ? ' AND c.id=$2' : ''} ORDER BY c.id`,
       characterId ? [realmId, characterId] : [realmId],
     )
   ).rows as Row[];

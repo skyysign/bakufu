@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { catalogSchema } from './json';
 import { boundedProviderCategories, providerCharacterId, ProviderCatalogError } from './providers';
 import { providerArtworkUrl } from './artwork';
+import { jikanMaxPerWork, jikanMedia, jikanMediumInfo, type JikanMedium } from './media';
+export { jikanMaxPerWork, jikanMedia, jikanMediumInfo, type JikanMedium } from './media';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const identifier = z.number().int().positive().max(2147483647);
@@ -15,7 +17,7 @@ export type JikanWork = z.infer<typeof jikanWorkSchema>;
 const shared = {
   provider: z.literal('jikan-api'),
   service: z.enum(['tenrai', 'jikan']).default('tenrai'),
-  medium: z.enum(['anime', 'manga']),
+  medium: z.enum(jikanMedia),
   revision: text(100),
   providerConsent: z.literal(true),
   termsConfirmed: z.literal(true),
@@ -41,20 +43,20 @@ export const jikanApiRequestSchema = z.discriminatedUnion('step', [
     work: jikanWorkSchema,
     artworkPermission: text(200).optional(),
     /** Main characters first, then the most favourited supporting cast. */
-    perWork: z.number().int().min(5).max(50).optional(),
+    perWork: z.number().int().min(5).max(jikanMaxPerWork).optional(),
   }),
 ]);
 export type JikanApiRequest = z.infer<typeof jikanApiRequestSchema>;
 export type JikanWorksResult = {
   kind: 'works';
-  medium?: 'anime' | 'manga';
+  medium?: JikanMedium;
   works: JikanWork[];
   page: number;
   hasNextPage: boolean;
 };
 export type JikanCharactersResult = {
   kind: 'characters';
-  medium?: 'anime' | 'manga';
+  medium?: JikanMedium;
   catalog: z.infer<typeof catalogSchema>;
   work: JikanWork;
 };
@@ -216,6 +218,7 @@ export async function fetchJikanApiStep(
       gender: inferCharacterGender(parsed.data.data.about),
     };
   }
+  const info = jikanMediumInfo[request.medium];
   if (request.step === 'works') {
     const parameters = new URLSearchParams({
       page: String(request.page),
@@ -223,10 +226,10 @@ export async function fetchJikanApiStep(
       sfw: 'true',
       order_by: 'members',
       sort: 'desc',
-      type: request.medium === 'anime' ? 'tv' : 'manga',
+      type: info.type,
     });
     if (request.query) parameters.set('q', request.query);
-    const raw = await requestJson(`${request.medium}?${parameters}`, request.service, fetcher);
+    const raw = await requestJson(`${info.path}?${parameters}`, request.service, fetcher);
     const parsed = z
       .object({
         data: z
@@ -279,13 +282,14 @@ export async function fetchJikanApiStep(
               (category) => category.name,
             ),
             ...(era ? [era] : []),
+            ...(info.category ? [info.category] : []),
           ]),
         };
       }),
     };
   }
   const raw = await requestJson(
-    `${request.medium}/${request.work.id}/characters`,
+    `${info.path}/${request.work.id}/characters`,
     request.service,
     fetcher,
   );

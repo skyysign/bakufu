@@ -11,6 +11,9 @@ import { post } from './api-client';
 import { GameIcon } from './game-art';
 import { ArtworkBackfill } from './artwork-backfill';
 import { GenderBackfill } from './gender-backfill';
+import { RosterGrowth } from './roster-growth';
+import { CharacterRemoval } from './character-removal';
+import { aniListMediumOptions, malMediumOptions } from './medium-picker';
 
 type Work = { id: number; title: string; categories: string[] };
 type Entry = {
@@ -44,7 +47,7 @@ export function RealmCharacters({
   const [summary, setSummary] = useState<RealmCharacterSummary | null>(null),
     [loadError, setLoadError] = useState(''),
     [service, setService] = useState<'tenrai' | 'jikan'>('tenrai'),
-    [medium, setMedium] = useState<'anime' | 'manga'>('anime'),
+    [medium, setMedium] = useState<string>('anime'),
     [consent, setConsent] = useState(false),
     [artwork, setArtwork] = useState(false),
     [permission, setPermission] = useState(''),
@@ -59,7 +62,9 @@ export function RealmCharacters({
     [error, setError] = useState(''),
     [result, setResult] = useState<RealmCharacterAddition | null>(null),
     [backfillBusy, setBackfillBusy] = useState(false),
-    [genderBusy, setGenderBusy] = useState(false);
+    [genderBusy, setGenderBusy] = useState(false),
+    [growthBusy, setGrowthBusy] = useState(false),
+    [removalBusy, setRemovalBusy] = useState(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -68,8 +73,8 @@ export function RealmCharacters({
     };
   }, []);
   useEffect(
-    () => onLockChange(busy === 'add' || backfillBusy || genderBusy),
-    [busy, backfillBusy, genderBusy, onLockChange],
+    () => onLockChange(busy === 'add' || backfillBusy || genderBusy || growthBusy || removalBusy),
+    [busy, backfillBusy, genderBusy, growthBusy, removalBusy, onLockChange],
   );
   useEffect(() => () => onLockChange(false), [onLockChange]);
 
@@ -81,7 +86,9 @@ export function RealmCharacters({
       if (!mounted.current) return;
       setSummary(body as RealmCharacterSummary);
       setArtwork((current) => current || (body as RealmCharacterSummary).artworkCount > 0);
-      setPermission((current) => current || (body as RealmCharacterSummary).artworkPermission || '');
+      setPermission(
+        (current) => current || (body as RealmCharacterSummary).artworkPermission || '',
+      );
     } catch (failure) {
       if (mounted.current) setLoadError((failure as Error).message);
     }
@@ -91,7 +98,8 @@ export function RealmCharacters({
   }, [loadSummary]);
 
   const provider = summary?.source === 'anilist' ? 'anilist' : 'mal';
-  const providerName = provider === 'anilist' ? 'AniList' : service === 'tenrai' ? 'Tenrai' : 'Jikan';
+  const providerName =
+    provider === 'anilist' ? 'AniList' : service === 'tenrai' ? 'Tenrai' : 'Jikan';
   const ready = consent && (!artwork || !!permission.trim());
 
   async function lookup(input: Record<string, unknown>) {
@@ -154,7 +162,7 @@ export function RealmCharacters({
       const cast = (await lookup({
         step: 'characters',
         work: next,
-        perWork: provider === 'anilist' ? 25 : 50,
+        perWork: 100,
         ...(artwork ? { artworkPermission: permission.trim() } : {}),
       })) as { catalog: { characters: Entry[] } };
       const list = await refreshStatus(cast.catalog.characters);
@@ -264,14 +272,19 @@ export function RealmCharacters({
                       id="addition-medium"
                       value={medium}
                       onChange={(event) => {
-                        setMedium(event.target.value as 'anime' | 'manga');
+                        setMedium(event.target.value);
                         setWorks(null);
                         setWork(null);
                         setCandidates(null);
                       }}
                     >
-                      <option value="anime">Anime</option>
-                      <option value="manga">Manga</option>
+                      {(provider === 'anilist' ? aniListMediumOptions : malMediumOptions).map(
+                        (option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </div>
                 </div>
@@ -326,9 +339,7 @@ export function RealmCharacters({
                   {busy === 'search' ? 'Searching…' : 'Search series'}
                 </button>
               </form>
-              {!ready && (
-                <p className="field-help">Confirm the lookup above to search.</p>
-              )}
+              {!ready && <p className="field-help">Confirm the lookup above to search.</p>}
               {works && (
                 <>
                   {works.length === 0 ? (
@@ -397,9 +408,7 @@ export function RealmCharacters({
                       <button
                         type="button"
                         className="text-button"
-                        onClick={() =>
-                          setSelected(new Set(missing.map((item) => item.sourceKey)))
-                        }
+                        onClick={() => setSelected(new Set(missing.map((item) => item.sourceKey)))}
                       >
                         Select all missing
                       </button>
@@ -430,7 +439,12 @@ export function RealmCharacters({
                             }
                           />
                           {item.artwork ? (
-                            <img src={item.artwork.url} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                            <img
+                              src={item.artwork.url}
+                              alt=""
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
                           ) : (
                             <span className="cast-initials" aria-hidden="true">
                               {item.name
@@ -471,8 +485,7 @@ export function RealmCharacters({
                         : `Add ${selected.size} character${selected.size === 1 ? '' : 's'}`}
                     </button>
                     <span className="field-help">
-                      Rarity follows the popularity ranking of the characters already in this
-                      realm.
+                      Rarity follows the popularity ranking of the characters already in this realm.
                     </span>
                   </div>
                 </fieldset>
@@ -480,12 +493,32 @@ export function RealmCharacters({
             </li>
           </ol>
           {provider === 'mal' && (
+            <RosterGrowth
+              realmId={realmId}
+              service={service}
+              consent={consent}
+              permission={artwork ? permission.trim() : ''}
+              disabled={disabled || !!busy || backfillBusy || genderBusy}
+              onBusyChange={setGrowthBusy}
+              onAdded={() => {
+                void loadSummary();
+                router.refresh();
+              }}
+            />
+          )}
+          {provider === 'anilist' && (
+            <p className="field-help roster-growth-note">
+              AniList rosters grow series by series with the lookup above (up to 100 characters per
+              series); AniList has no bulk walk.
+            </p>
+          )}
+          {provider === 'mal' && (
             <ArtworkBackfill
               realmId={realmId}
               service={service}
               consent={consent}
               permission={artwork ? permission : ''}
-              disabled={disabled || !!busy}
+              disabled={disabled || !!busy || growthBusy}
               onBusyChange={setBackfillBusy}
             />
           )}
@@ -494,7 +527,7 @@ export function RealmCharacters({
               realmId={realmId}
               service={service}
               consent={consent}
-              disabled={disabled || !!busy || backfillBusy}
+              disabled={disabled || !!busy || backfillBusy || growthBusy}
               onBusyChange={setGenderBusy}
             />
           )}
@@ -525,6 +558,16 @@ export function RealmCharacters({
           )}
         </>
       )}
+      <CharacterRemoval
+        realmId={realmId}
+        withoutArtwork={summary.characterCount - summary.artworkCount}
+        disabled={disabled || !!busy || backfillBusy || genderBusy || growthBusy}
+        onBusyChange={setRemovalBusy}
+        onRemoved={() => {
+          void loadSummary();
+          router.refresh();
+        }}
+      />
     </section>
   );
 }

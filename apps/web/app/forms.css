@@ -490,3 +490,22 @@ input[type='range']:focus-visible {
 .setting-control > select {
   width: 100%;
 }
+
+/* Kinds of series (anime, manhwa, donghua, …) for roster imports. */
+.medium-picker {
+  margin: 12px 0 4px;
+  padding: 0;
+  border: 0;
+}
+.medium-picker legend {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.medium-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: 4px 16px;
+}
+.medium-options .check-label {
+  margin: 0;
+}

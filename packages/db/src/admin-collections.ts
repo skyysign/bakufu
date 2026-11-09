@@ -356,7 +356,7 @@ export async function adminCollectionCommand(
     if (command.kind === 'restore_card') {
       const row = (
         await tx.query(
-          `SELECT owned.id,owned.owner_id,owned.character_id,owned.recycled_at,c.name,
+          `SELECT owned.id,owned.owner_id,owned.character_id,owned.recycled_at,c.name,c.retired_at,
             r.id AS recycling_id,r.account_id,r.request_key,r.result,r.config_snapshot,r.created_at
           FROM cards owned JOIN characters c ON c.realm_id=owned.realm_id AND c.id=owned.character_id
           LEFT JOIN recyclings r ON r.realm_id=owned.realm_id AND r.card_id=owned.id
@@ -369,6 +369,12 @@ export async function adminCollectionCommand(
           'CARD_UNAVAILABLE',
           'This member has no recycled copy of that card to restore.',
           404,
+        );
+      if (row.retired_at)
+        throw new GameError(
+          'CHARACTER_REMOVED',
+          'This character was removed from the realm. Add it back under Characters before restoring the card.',
+          409,
         );
       if (
         (

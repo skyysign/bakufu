@@ -427,6 +427,41 @@ export function Dashboard({
       setBusy(null);
     }
   }
+  // Recycling from the opening results. A request whose outcome is unknown
+  // (network/server error) keeps its key, so retrying never pays twice.
+  const revealRecycleKeys = useRef(new Map<string, string>());
+  async function recycleFromReveal(cardIds: string[]): Promise<Record<string, number>> {
+    if (!view) throw new Error('This realm is not available.');
+    const id = cardIds.join(',');
+    const requestKey = revealRecycleKeys.current.get(id) ?? crypto.randomUUID();
+    revealRecycleKeys.current.set(id, requestKey);
+    try {
+      const results: RecyclingResult[] =
+        cardIds.length === 1
+          ? [
+              (await post('recycle', {
+                realmId: view.id,
+                cardId: cardIds[0],
+                requestKey,
+                expectedRevision: view.configRevision,
+              })) as RecyclingResult,
+            ]
+          : (
+              (await post('recycle/batch', {
+                realmId: view.id,
+                cardIds,
+                requestKey,
+                expectedRevision: view.configRevision,
+              })) as { recycled: RecyclingResult[] }
+            ).recycled;
+      revealRecycleKeys.current.delete(id);
+      router.refresh();
+      return Object.fromEntries(results.map((result) => [result.cardId, result.credited]));
+    } catch (error) {
+      if (error instanceof ApiError && error.status < 500) revealRecycleKeys.current.delete(id);
+      throw error;
+    }
+  }
   async function changeWish(characterId: string, present: boolean) {
     if (!view || busy || pending || pendingRecycle || settingsBusy || tradeBusy) return;
     const attempt = pendingWish ?? {
@@ -670,6 +705,7 @@ export function Dashboard({
                       characterValues={view.characterValues}
                       packName={reveal.packName}
                       onDismiss={dismissReveal}
+                      onRecycle={recycleFromReveal}
                       onBrowseCollection={() => {
                         dismissReveal();
                         router.push(screenHref('collection', view.id));
@@ -722,8 +758,7 @@ export function Dashboard({
                               {receipt.ok && (
                                 <p>
                                   {receipt.charged.toLocaleString()} gems spent
-                                  {receipt.progression &&
-                                    ` · +${receipt.progression.xpAwarded} XP`}
+                                  {receipt.progression && ` · +${receipt.progression.xpAwarded} XP`}
                                   {!!receipt.progression?.levelsGained &&
                                     ` · Level ${receipt.progression.level}!`}
                                 </p>
@@ -978,9 +1013,7 @@ export function Dashboard({
                                 <>
                                   <GameIcon name="recycle" />
                                   Recycle
-                                  <span className="recycle-reward">
-                                    +{reward.toLocaleString()}
-                                  </span>
+                                  <span className="recycle-reward">+{reward.toLocaleString()}</span>
                                 </>
                               )}
                             </button>

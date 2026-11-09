@@ -77,7 +77,7 @@ export async function verifyJikanBrowser(
           return;
         }
         expect(input.work).toEqual(additionWork);
-        expect(input.perWork).toBe(50);
+        expect(input.perWork).toBe(100);
         expect(input.artworkPermission).toBe('Original test illustration references, MIT');
         const ids = [920000000, 920000001, 930000000, 930000001, 930000002];
         await route.fulfill({

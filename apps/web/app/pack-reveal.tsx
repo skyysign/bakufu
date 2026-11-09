@@ -1,7 +1,15 @@
 'use client';
-import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import type { Character, CharacterValue, OpeningResult, PackMotif } from '@card-engine/core';
-import { PackArtwork, packMotif } from './game-art';
+import { GameIcon, PackArtwork, packMotif } from './game-art';
 import { packPaletteStyle } from './pack-palettes';
 import { InspectableCard } from './card-inspection';
 import { RarityEffects } from './rarity-effects';
@@ -181,11 +189,13 @@ function RevealCard({
   index,
   packNumber,
   valuation,
+  footer,
 }: {
   character: Character;
   index: number;
   packNumber?: number;
   valuation?: CharacterValue;
+  footer?: ReactNode;
 }) {
   return (
     <article
@@ -199,6 +209,7 @@ function RevealCard({
           <span className="reveal-pack-number reveal-pack-badge">Pack {packNumber}</span>
         )}
       </div>
+      {footer}
     </article>
   );
 }
@@ -211,6 +222,7 @@ export function PackReveal({
   onBrowseCollection,
   appearance,
   customSounds,
+  onRecycle,
 }: {
   receipt: SuccessfulOpening;
   packName: string;
@@ -223,6 +235,8 @@ export function PackReveal({
     tiers: Partial<Record<Tier, string>>;
     characters: Record<string, string>;
   };
+  /** Recycles cards from this opening; resolves with the gems credited per card ID. */
+  onRecycle?: (cardIds: string[]) => Promise<Record<string, number>>;
 }) {
   const primary = useRef<HTMLButtonElement>(null),
     summaryHeading = useRef<HTMLHeadingElement>(null);
@@ -238,6 +252,44 @@ export function PackReveal({
         : 'sealed',
   );
   const [index, setIndex] = useState(0);
+  // Recycling straight from the results: credited gems per recycled card.
+  const [recycled, setRecycled] = useState<Record<string, number>>({}),
+    [recycling, setRecycling] = useState<string | null>(null),
+    [confirmTier, setConfirmTier] = useState<Tier | null>(null),
+    [recycleError, setRecycleError] = useState(''),
+    [recycleNote, setRecycleNote] = useState('');
+  const recycleValue = (i: number) =>
+    characterValues?.[receipt.characters[i].id]?.recycleValue ?? null;
+  async function recycleCards(cardIds: string[], busyKey: string, label: string) {
+    if (!onRecycle || recycling) return;
+    setRecycling(busyKey);
+    setRecycleError('');
+    setRecycleNote('');
+    try {
+      const credits = await onRecycle(cardIds);
+      const credited = Object.values(credits).reduce((sum, value) => sum + value, 0);
+      setRecycled((current) => ({ ...current, ...credits }));
+      setConfirmTier(null);
+      setRecycleNote(`${label} recycled: +${credited.toLocaleString()} gems.`);
+    } catch (failure) {
+      setRecycleError((failure as Error).message);
+    } finally {
+      setRecycling(null);
+    }
+  }
+  // Bulk recycling by rarity: tiers with at least two cards still in the collection.
+  const bulkTiers = (['common', 'uncommon', 'rare'] as const)
+    .map((tier) => {
+      const cards = receipt.characters
+        .map((character, i) => ({ character, i, cardId: receipt.cardIds[i] }))
+        .filter(({ character, cardId }) => character.tier === tier && !(cardId in recycled));
+      return {
+        tier,
+        cardIds: cards.map((card) => card.cardId),
+        gems: cards.reduce((sum, card) => sum + (recycleValue(card.i) ?? 0), 0),
+      };
+    })
+    .filter((group) => group.cardIds.length >= 2);
   const skipped = useRef(false);
   const [videoFailed, setVideoFailed] = useState(false);
   const activeTier = receipt.characters[index].tier,
@@ -376,6 +428,60 @@ export function PackReveal({
           <h2 ref={summaryHeading} tabIndex={-1} className="reveal-summary-title">
             {packCount > 1 ? `Your ${packCount}-pack opening` : 'Your pack contents'}
           </h2>
+          {onRecycle && bulkTiers.length > 0 && (
+            <div className="reveal-bulk-recycle" role="group" aria-label="Recycle by rarity">
+              {bulkTiers.map((group) =>
+                confirmTier === group.tier ? (
+                  <span key={group.tier} className="reveal-bulk-confirm">
+                    <button
+                      type="button"
+                      disabled={!!recycling}
+                      onClick={() =>
+                        void recycleCards(
+                          group.cardIds,
+                          `bulk:${group.tier}`,
+                          `${group.cardIds.length} ${group.tier} cards`,
+                        )
+                      }
+                    >
+                      {recycling === `bulk:${group.tier}`
+                        ? 'Recycling…'
+                        : `Confirm: recycle ${group.cardIds.length} for +${group.gems.toLocaleString()}`}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={!!recycling}
+                      onClick={() => setConfirmTier(null)}
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    key={group.tier}
+                    type="button"
+                    className="secondary"
+                    disabled={!!recycling}
+                    onClick={() => setConfirmTier(group.tier)}
+                  >
+                    <GameIcon name="recycle" /> Recycle all {group.tier} ({group.cardIds.length})
+                    <span className="recycle-reward">+{group.gems.toLocaleString()}</span>
+                  </button>
+                ),
+              )}
+            </div>
+          )}
+          {recycleNote && (
+            <p className="success-note reveal-recycle-note" role="status">
+              {recycleNote}
+            </p>
+          )}
+          {recycleError && (
+            <p className="error" role="alert">
+              {recycleError}
+            </p>
+          )}
           <div
             className="reveal-summary reveal-gallery"
             aria-label="All revealed cards"
@@ -394,6 +500,41 @@ export function PackReveal({
                 valuation={characterValues?.[character.id]}
                 index={i}
                 packNumber={packCount > 1 ? Math.floor(i / cardsPerPack) + 1 : undefined}
+                footer={
+                  onRecycle &&
+                  (receipt.cardIds[i] in recycled ? (
+                    <p className="reveal-recycled">
+                      <GameIcon name="check" /> Recycled +
+                      {recycled[receipt.cardIds[i]].toLocaleString()}
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      className="secondary wide recycle-button"
+                      aria-label={`Recycle ${character.name}${
+                        recycleValue(i) === null ? '' : ` for ${recycleValue(i)} gems`
+                      }`}
+                      disabled={!!recycling}
+                      onClick={() =>
+                        void recycleCards([receipt.cardIds[i]], receipt.cardIds[i], character.name)
+                      }
+                    >
+                      {recycling === receipt.cardIds[i] ? (
+                        'Recycling…'
+                      ) : (
+                        <>
+                          <GameIcon name="recycle" />
+                          Recycle
+                          {recycleValue(i) !== null && (
+                            <span className="recycle-reward">
+                              +{recycleValue(i)!.toLocaleString()}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </button>
+                  ))
+                }
               />
             ))}
           </div>

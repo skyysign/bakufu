@@ -52,15 +52,31 @@ tracker reports the public-service discontinuation. No automatic host switch
 takes place after consent.
 
 Review the selected service's usage requirements and enable its explicit request
-consent. Choose the **catalog medium** — Anime, Manga, or **Anime and manga** —
-then one of two ways to build the roster:
+consent. Tick the **kinds of series** to walk, then choose one of two ways to
+build the roster:
+
+| Kind | MyAnimeList list and type | Category added to its characters |
+| --- | --- | --- |
+| Anime (TV) | anime, `tv` | none |
+| Web anime (ONA), includes most donghua | anime, `ona` | Web Anime |
+| Anime films | anime, `movie` | Anime Film |
+| Manga | manga, `manga` | none |
+| Manhwa (Korean) | manga, `manhwa` | Manhwa |
+| Manhua (Chinese) | manga, `manhua` | Manhua |
+| Light novels | manga, `lightnovel` | Light Novel |
+
+MyAnimeList has no separate donghua type: Chinese animation is listed almost
+entirely as web anime (ONA), next to some Japanese web series. The new
+categories let you add a Manhwa, Manhua or Light Novel pack under **Packs**.
+Several kinds alternate page by page, most popular series first.
+
 
 - **Popular roster.** Choose a roster size with the slider (100 to 100,000
   characters, finer steps for small rosters) or type an exact number (50 to
-  100,000), choose the number of characters per series (10, 15, 25 or 50), then
+  100,000), choose the number of characters per series (10, 15, 25, 50 or 100), then
   **Prepare popular roster**. The page estimates the preparation time (about
-  1 minute for 1,000 characters, about 1.8 hours for 100,000 at 25 per series). The browser walks the most popular series in order (anime and manga
-  pages alternate when both are selected) and takes each series' main characters
+  1 minute for 1,000 characters, about 1.8 hours for 100,000 at 25 per series). The browser walks the most popular series in order (the chosen kinds'
+  pages alternate) and takes each series' main characters
   first, then its most favourited supporting cast. Fewer characters per series
   means more series and more variety.
 - **Choose series.** Search or browse popular series, tick the ones you want and
@@ -132,10 +148,14 @@ pictures.
 ## AniList series browser
 
 Open **Administration → New realm → Anime & manga roster → AniList**. Confirm that you reviewed AniList's terms, optionally
-enable artwork references with a permission statement, choose Anime or Manga,
+enable artwork references with a permission statement, choose what to search
+(anime or manga of every country, or only donghua, manhwa, manhua or light
+novels, using AniList's country of origin and format; works are tagged Donghua,
+Manhwa, Manhua or Light Novel accordingly),
 then search AniList or browse its most popular series and **tick the series you
 want** (up to 100 per catalog). **Prepare selected series** requests each chosen
-series' characters — main cast first, up to 10, 15 or 25 per series — and merges
+series' characters — main cast first, up to 10, 15, 25, 50 or 100 per series
+(AniList returns 25 per request, so 100 takes four requests) — and merges
 them into one catalog for the ordinary review.
 
 AniList's terms prohibit mass collection, so there is deliberately no automated
@@ -228,8 +248,8 @@ untouched — and retrying an applied request reports the packs as already prese
 
 **Administration → Characters** (instance admins who administer the realm) looks
 up one series at a time on the realm's own provider — MyAnimeList through
-Tenrai/Jikan, or AniList — and lists its cast (up to 50 characters per MyAnimeList
-series, 25 per AniList series). Characters already in the realm are marked and
+Tenrai/Jikan, or AniList — in any of the kinds above, and lists its cast (up to
+100 characters per series). Characters already in the realm are marked and
 cannot be selected; the rest show the rarity they would get. **Add N characters**
 installs the selection:
 
@@ -252,6 +272,48 @@ nothing is collected in the background. Realms built from your own JSON or CSV
 file keep their original catalog. The service is `addRealmCharacters` in
 `packages/db/src/realm-characters.ts` (`GET/POST /api/realm-characters`,
 `POST /api/realm-characters/check`).
+
+### Growing a MyAnimeList roster
+
+**Grow the roster** (same screen, MyAnimeList realms) is the wizard's popular
+roster for an existing realm: tick the kinds of series, set how many characters
+to add (slider or exact number, up to 10,000) and the characters per series (up
+to 100), then start. It walks the most popular series and adds only characters
+the realm doesn't have yet, so it fills in new series and, with a higher
+per-series count than the realm was created with, the rest of each long
+series' cast. Rarity follows the realm's ranking and fame floors, like any
+addition. Batches of up to 200 are saved as they arrive: **Pause** keeps
+everything added so far and **Resume** continues the walk. Afterwards run
+**Detect genders** so the new characters join the Waifus and Husbandos packs.
+AniList realms grow series by series with the lookup above; AniList's terms rule
+out a bulk walk.
+
+## Removing characters
+
+**Remove characters** (Administration → Characters, every realm) removes one
+character found by name or series, or **every character without a picture** in
+one go. Each removal is reviewed first: how many characters, which ones players
+own, and the gems their owners get back.
+
+- A removed character leaves packs, the glossary, wishlists (its wishes are
+  cleared) and every future pull. Its row stays, so pull receipts, trades,
+  exports and backups keep stable IDs.
+- An owned card is recycled for its owner: they get the card's recycle value,
+  exactly as if they had recycled it themselves (same recycling journal and
+  wallet entry).
+- A character whose card is listed on the market or reserved in a pending trade
+  is skipped until that ends.
+- Packs left with fewer characters than the realm's minimum pool are named in the
+  review.
+- The review is bound to the realm's state: a pull, trade or listing in between
+  makes it stale and the removal is refused. A retry with the same request key
+  replays the result.
+- Adding the character again (lookup or growth) brings it back with its saved
+  tier. Until then **Player collections** can't restore its refunded card.
+
+Each removal is journaled in `character_removals` (migration 0029) and checked
+on restore. The service is `packages/db/src/character-removal.ts`
+(`POST /api/character-removal/preview`, `POST /api/character-removal`).
 
 ## Adding artwork to existing characters
 

@@ -7,10 +7,27 @@ know which backups it can restore.
 
 ## Unreleased
 
-Newest migration: `0028_tier_adjustments.sql` (realm config v12).
+Newest migration: `0029_character_removals.sql` (realm config v12).
 
 ### Added
 
+- **Recycle from the opening window**: every card in the opening results has a
+  Recycle button, plus "Recycle all common/uncommon/rare" for openings with two
+  or more of a tier (one confirmation, one all-or-nothing batch, retry-safe).
+- **More kinds of series**: MyAnimeList rosters can walk manhwa, manhua, web
+  anime (ONA, where MyAnimeList lists most donghua), anime films and light novels
+  next to TV anime and manga; AniList adds donghua, manhwa, manhua and light
+  novels by country of origin and format. These works get a Manhwa, Manhua,
+  Donghua, Web Anime, Anime Film or Light Novel category for packs.
+- **Up to 100 characters per series** in the wizard and in character lookups
+  (AniList loads them 25 per request).
+- **Grow the roster** (Administration → Characters, MyAnimeList realms): the
+  wizard's popular-roster slider for an existing realm; adds only characters the
+  realm doesn't have, including more of a long series' cast.
+- **Remove characters** (Administration → Characters): one by one or every
+  character without a picture at once, with a review. Owners get their card's
+  recycle value back; cards on the market or in a trade are skipped. Adding a
+  character again brings it back.
 - **Fame floors**: MyAnimeList/AniList characters with enough favourites are at
   least rare (10,000), epic (30,000) or legendary (100,000), whatever the rest of
   the roster looks like. New realms use them; existing realms keep their tiers

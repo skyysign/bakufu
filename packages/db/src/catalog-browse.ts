@@ -48,7 +48,8 @@ export async function browseRealmCatalog(
       const stored = (await tx.query('SELECT config FROM realms WHERE id=$1', [realmId])).rows[0]
         .config;
       const config = parseRealmConfig(stored);
-      const rank = stored.schemaVersion >= 7 ? await purchasedCollectorRank(tx, realmId, actorId) : 0;
+      const rank =
+        stored.schemaVersion >= 7 ? await purchasedCollectorRank(tx, realmId, actorId) : 0;
       const effectiveConfig = await effectiveMemberConfig(tx, realmId, actorId, config, rank);
       const rows = (
         await tx.query(
@@ -56,7 +57,7 @@ export async function browseRealmCatalog(
             SELECT c.id,c.source_key AS "sourceKey",c.name,c.series,c.categories,c.tier,c.provenance->'artwork' AS artwork,
               CASE WHEN owned.owner_id=$2 THEN 'yours' WHEN owned.id IS NOT NULL THEN 'claimed' ELSE 'available' END AS status
             FROM characters c LEFT JOIN cards owned ON owned.realm_id=c.realm_id AND owned.character_id=c.id AND owned.recycled_at IS NULL
-            WHERE c.realm_id=$1
+            WHERE c.realm_id=$1 AND c.retired_at IS NULL
               AND ($3='' OR strpos(lower(c.name || ' ' || c.series || ' ' || array_to_string(c.categories,' ')),lower($3))>0)
               AND ($4='all' OR c.tier=$4)
               AND (NOT $6 OR NOT EXISTS(SELECT 1 FROM wishlist_entries w WHERE w.realm_id=c.realm_id AND w.account_id=$2 AND w.character_id=c.id))
@@ -81,7 +82,7 @@ export async function browseRealmCatalog(
           ? (
               await tx.query(
                 `SELECT count(*)::int AS total FROM characters c LEFT JOIN cards owned ON owned.realm_id=c.realm_id AND owned.character_id=c.id AND owned.recycled_at IS NULL
-                WHERE c.realm_id=$1
+                WHERE c.realm_id=$1 AND c.retired_at IS NULL
                   AND ($3='' OR strpos(lower(c.name || ' ' || c.series || ' ' || array_to_string(c.categories,' ')),lower($3))>0)
                   AND ($4='all' OR c.tier=$4)
                   AND (NOT $6 OR NOT EXISTS(SELECT 1 FROM wishlist_entries w WHERE w.realm_id=c.realm_id AND w.account_id=$2 AND w.character_id=c.id))

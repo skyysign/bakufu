@@ -117,6 +117,20 @@ character additions apply them; realms created earlier start with floors off.
 of every tier change, applies them in one transaction with a settings revision,
 sets or clears one character's manual tier, and shows recent changes. Every
 change is journaled (`tier_adjustments`, migration 0028) and restore-checked.
+Cards can be recycled straight from the opening results, one by one or all of
+one tier at once (`recycleCards`, an all-or-nothing batch with one journal entry
+per card). Provider rosters walk more kinds of series (MyAnimeList: TV anime,
+web anime/ONA with most donghua, films, manga, manhwa, manhua, light novels;
+AniList: anime, donghua, manga, manhwa, manhua, light novels by country and
+format) with up to 100 characters per series. **Administration → Characters**
+can grow a MyAnimeList realm with the popular-roster walk and remove characters
+(one, or all without a picture), refunding owners their card's recycle value
+(migration 0029). See [providers](content/providers.md) and
+[recycling](gameplay/recycling.md); covered by
+`tests/integration/batch-recycling.test.ts`,
+`tests/integration/character-removal.test.ts`, the importer unit tests and
+`tests/support/roster-tools-browser.ts`.
+
 Covered by `tests/unit/fame-floors.test.ts`,
 `tests/integration/tier-adjustments.test.ts` and the browser check in
 `tests/support/rarity-browser.ts`.

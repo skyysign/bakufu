@@ -73,8 +73,16 @@ describe('AniList selected-series boundary', () => {
       page: 1,
       hasNextPage: true,
       works: [
-        { id: work.id, title: 'Original AniList Academy', categories: ['2010s', 'Action', 'Fantasy', 'Shounen'] },
-        { id: work.id + 1, title: 'Original Quiet Library', categories: ['1990s', 'Slice of Life'] },
+        {
+          id: work.id,
+          title: 'Original AniList Academy',
+          categories: ['2010s', 'Action', 'Fantasy', 'Shounen'],
+        },
+        {
+          id: work.id + 1,
+          title: 'Original Quiet Library',
+          categories: ['1990s', 'Slice of Life'],
+        },
       ],
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -82,8 +90,84 @@ describe('AniList selected-series boundary', () => {
     expect(address).toBe('https://graphql.anilist.co');
     expect(options).toMatchObject({ method: 'POST', redirect: 'error', credentials: 'omit' });
     const body = JSON.parse(String(options.body));
-    expect(body.variables).toEqual({ page: 1, type: 'ANIME', search: 'Original' });
+    expect(body.variables).toEqual({
+      page: 1,
+      type: 'ANIME',
+      country: null,
+      format: null,
+      search: 'Original',
+    });
     expect(body.query).toContain('isAdult:false');
+  });
+  it('filters manhwa, manhua, donghua and light novels and tags each work with its medium', async () => {
+    const fetcher = vi.fn(async () =>
+      response({
+        data: {
+          Page: {
+            pageInfo: { hasNextPage: false },
+            media: [
+              { ...page.data.Page.media[0], type: 'MANGA', format: 'MANGA', countryOfOrigin: 'KR' },
+              { ...page.data.Page.media[1], type: 'MANGA', format: 'NOVEL', countryOfOrigin: 'JP' },
+            ],
+          },
+        },
+      }),
+    );
+    const result = await fetchAniListApiStep(
+      { ...common, medium: 'manhwa', step: 'works', page: 1 },
+      fetcher,
+    );
+    if (result.kind !== 'works') throw new Error('Unexpected result.');
+    expect(result.works.map((item) => item.categories)).toEqual([
+      ['2010s', 'Action', 'Fantasy', 'Manhwa', 'Shounen'],
+      ['1990s', 'Light Novel', 'Slice of Life'],
+    ]);
+    const variables = (medium: string) =>
+      fetchAniListApiStep({ ...common, medium, step: 'works', page: 1 }, fetcher).then(() => {
+        const calls = fetcher.mock.calls as unknown as [string, RequestInit][];
+        return JSON.parse(String(calls[calls.length - 1][1].body)).variables;
+      });
+    expect(await variables('manhwa')).toMatchObject({ type: 'MANGA', country: 'KR', format: null });
+    expect(await variables('manhua')).toMatchObject({ type: 'MANGA', country: 'CN' });
+    expect(await variables('donghua')).toMatchObject({ type: 'ANIME', country: 'CN' });
+    expect(await variables('lightnovel')).toMatchObject({ type: 'MANGA', format: 'NOVEL' });
+  });
+  it('loads long casts 25 characters per request, up to 100 per series', async () => {
+    const pages = [0, 1, 2].map((pageIndex) => ({
+      data: {
+        Media: {
+          characters: {
+            pageInfo: { hasNextPage: pageIndex < 2 },
+            edges: Array.from({ length: 25 }, (_, index) => ({
+              role: 'SUPPORTING',
+              node: {
+                id: 950000001 + pageIndex * 25 + index,
+                name: { full: `Original Crew ${pageIndex * 25 + index}`, userPreferred: null },
+                favourites: 1000 - (pageIndex * 25 + index),
+              },
+            })),
+          },
+        },
+      },
+    }));
+    const fetcher = vi.fn(async (_url: string, options: RequestInit) =>
+      response(pages[JSON.parse(String(options.body)).variables.page - 1]),
+    );
+    const result = await fetchAniListApiStep(
+      { ...common, step: 'characters', work, perWork: 60 },
+      fetcher as unknown as typeof fetch,
+    );
+    if (result.kind !== 'characters') throw new Error('Unexpected result.');
+    expect(result.catalog.characters).toHaveLength(60);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    const all = await fetchAniListApiStep(
+      { ...common, step: 'characters', work, perWork: 100 },
+      fetcher as unknown as typeof fetch,
+    );
+    // The cast ends after three pages: 75 characters, no fourth request.
+    if (all.kind !== 'characters') throw new Error('Unexpected result.');
+    expect(all.catalog.characters).toHaveLength(75);
+    expect(fetcher).toHaveBeenCalledTimes(6);
   });
   it('loads one chosen series: main cast first, bounded, artwork only with permission', async () => {
     const fetcher = vi.fn(async () => response(cast()));
@@ -142,18 +226,24 @@ describe('AniList selected-series boundary', () => {
       { ...common, step: 'works', page: 51 },
       { ...common, step: 'works', page: 1, providerConsent: false },
       { ...common, step: 'works', page: 1, url: 'https://private.invalid' },
-      { ...common, step: 'characters', work, perWork: 26 },
+      { ...common, step: 'characters', work, perWork: 101 },
+      { ...common, medium: 'webtoon', step: 'works', page: 1 },
     ])
       await expect(fetchAniListApiStep(input, fetcher)).rejects.toThrow();
     expect(fetcher).not.toHaveBeenCalled();
     expect(
-      aniListApiRequestSchema.safeParse({ ...common, step: 'characters', work, artworkPermission: '' })
-        .success,
+      aniListApiRequestSchema.safeParse({
+        ...common,
+        step: 'characters',
+        work,
+        artworkPermission: '',
+      }).success,
     ).toBe(false);
   });
   it('merges series that share characters without duplicating identities', async () => {
-    const first = await fetchAniListApiStep({ ...common, step: 'characters', work, perWork: 5 }, async () =>
-      response(cast(5)),
+    const first = await fetchAniListApiStep(
+      { ...common, step: 'characters', work, perWork: 5 },
+      async () => response(cast(5)),
     );
     const second = await fetchAniListApiStep(
       {

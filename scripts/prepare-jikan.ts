@@ -5,6 +5,7 @@ import { catalogSchema } from '../packages/importers/src/json';
 import { fetchJikanApiStep, jikanPacing } from '../packages/importers/src/jikan';
 import {
   applyJikanWorks,
+  jikanCharactersDefault,
   jikanSeedLimits,
   mergeJikanCharacters,
   migrateJikanSeed,
@@ -24,7 +25,7 @@ const output = resolve(option('--output') ?? '.test-data/anime-1000.catalog.json
   medium = option('--medium') ?? 'anime',
   service = option('--service') ?? 'tenrai',
   target = Number(option('--characters') ?? 1000),
-  perWork = Number(option('--per-series') ?? jikanSeedLimits.maxPerWork),
+  perWork = Number(option('--per-series') ?? jikanCharactersDefault),
   artworkPermission = option('--artwork-permission');
 if (!args.includes('--confirm-provider-use'))
   throw new Error(

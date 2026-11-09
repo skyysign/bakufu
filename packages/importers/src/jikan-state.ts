@@ -1,14 +1,17 @@
 import type { JikanCharactersResult, JikanWork, JikanWorksResult } from './jikan';
+import { jikanMaxPerWork, jikanMedia, type JikanMedium } from './media';
 import { boundedProviderCategories } from './provider-categories';
 
-export type JikanMedium = 'anime' | 'manga';
+export type { JikanMedium } from './media';
 export type JikanQueuedWork = JikanWork & { medium: JikanMedium };
+/** Characters per series when none is chosen (the previous maximum). */
+export const jikanCharactersDefault = 50;
 /** Bounds shared by the browser preparation and the operator command. */
 export const jikanSeedLimits = {
   maxTarget: 100_000,
   maxPages: 400,
   minPerWork: 5,
-  maxPerWork: 50,
+  maxPerWork: jikanMaxPerWork,
 } as const;
 
 /**
@@ -41,7 +44,7 @@ export function newJikanSeed(
   medium: JikanMedium | 'both' | JikanMedium[],
   target = 1000,
   service: 'tenrai' | 'jikan' = 'tenrai',
-  perWork: number = jikanSeedLimits.maxPerWork,
+  perWork: number = jikanCharactersDefault,
 ): JikanSeedState {
   if (!Number.isInteger(target) || target < 1 || target > jikanSeedLimits.maxTarget)
     throw new Error(`Choose 1 to ${jikanSeedLimits.maxTarget.toLocaleString('en')} characters.`);
@@ -50,15 +53,15 @@ export function newJikanSeed(
     perWork < jikanSeedLimits.minPerWork ||
     perWork > jikanSeedLimits.maxPerWork
   )
-    throw new Error('Choose 5 to 50 characters per series.');
+    throw new Error(`Choose 5 to ${jikanSeedLimits.maxPerWork} characters per series.`);
   const media: JikanMedium[] =
     medium === 'both'
       ? ['anime', 'manga']
       : Array.isArray(medium)
         ? [...new Set(medium)]
         : [medium];
-  if (!media.length || media.some((value) => value !== 'anime' && value !== 'manga'))
-    throw new Error('Choose anime, manga or both.');
+  if (!media.length || media.some((value) => !jikanMedia.includes(value)))
+    throw new Error('Choose at least one kind of series.');
   return {
     schemaVersion: 2,
     media,
@@ -101,7 +104,7 @@ export function migrateJikanSeed(input: unknown): JikanSeedState {
     service: v1.service,
     revision: v1.revision,
     target: v1.target,
-    perWork: jikanSeedLimits.maxPerWork,
+    perWork: jikanCharactersDefault,
     cursors: { [v1.medium]: { page: v1.page, hasNextPage: v1.hasNextPage } },
     queue: v1.queue.map((work) => ({ ...work, medium: v1.medium })),
     completed: v1.completed.map((id) => `${v1.medium}:${id}`),
