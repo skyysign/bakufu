@@ -110,4 +110,14 @@ export {
   type AdminCollectionCommand,
 } from './admin-collections';
 export { previewCharacterPopularity, applyCharacterPopularity } from './character-values';
+export {
+  realmTierAdjustments,
+  previewTierFloors,
+  applyTierFloors,
+  setTierOverride,
+  type TierAdjustmentView,
+  type TierFloorPreview,
+  type TierAdjustmentResult,
+  type TierCharacter,
+} from './tier-adjustments';
 export type { CharacterValue } from '../../core/src/character-values';

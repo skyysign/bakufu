@@ -1114,3 +1114,88 @@ li[data-present='true'] .cast-item {
     grid-template-columns: 1fr;
   }
 }
+
+/* Administration → Rarity. */
+.rarity-counts {
+  margin-top: 14px;
+}
+.rarity-floor-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+.rarity-floor-fields label,
+.rarity-search,
+.rarity-manual-field {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.rarity-manual-field {
+  max-width: 360px;
+}
+.rarity-manual-field label {
+  margin: 0;
+}
+.rarity-subtitle {
+  margin: 18px 0 6px;
+}
+.rarity-search {
+  max-width: 360px;
+}
+.rarity-table {
+  width: 100%;
+  max-width: 420px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.rarity-table caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 4px;
+}
+.rarity-table th,
+.rarity-table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.rarity-changes {
+  max-height: 420px;
+  overflow: auto;
+}
+.rarity-row .sound-status small {
+  overflow-wrap: anywhere;
+}
+.rarity-row .sound-status strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.rarity-row:not(:has(.sound-actions)) {
+  grid-template-columns: 130px minmax(0, 1fr);
+}
+.rarity-row:not(:has(.tier-name)):not(:has(.rarity-move)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.rarity-changes .rarity-row {
+  grid-template-columns: minmax(200px, auto) minmax(0, 1fr);
+}
+.rarity-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rarity-manual p {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .rarity-floor-fields,
+  .rarity-row,
+  .rarity-row:not(:has(.sound-actions)),
+  .rarity-changes .rarity-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rarity-row .tier-name {
+    justify-self: start;
+  }
+}

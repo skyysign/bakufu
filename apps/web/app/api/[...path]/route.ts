@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import {
   adminMemberCollection,
   adminCollectionCommand,
+  realmTierAdjustments,
+  previewTierFloors,
+  applyTierFloors,
+  setTierOverride,
   realmGenderGaps,
   setRealmCharacterGenders,
   retireRealmPack,
@@ -179,6 +183,29 @@ export async function POST(request: Request, context: Context) {
     if (path === 'admin-collection')
       return NextResponse.json(
         await adminCollectionCommand(db(), actor.id, String(input.realmId ?? ''), input.command),
+      );
+    if (path === 'tier-adjustments/preview')
+      return NextResponse.json(
+        await previewTierFloors(db(), actor.id, String(input.realmId ?? ''), {
+          floors: input.floors,
+        }),
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    if (path === 'tier-adjustments/apply')
+      return NextResponse.json(
+        await applyTierFloors(db(), actor.id, String(input.realmId ?? ''), {
+          floors: input.floors,
+          previewHash: input.previewHash,
+          requestKey: input.requestKey,
+        }),
+      );
+    if (path === 'tier-adjustments/override')
+      return NextResponse.json(
+        await setTierOverride(db(), actor.id, String(input.realmId ?? ''), {
+          characterId: input.characterId,
+          tier: input.tier ?? null,
+          requestKey: input.requestKey,
+        }),
       );
     if (path === 'realm-packs')
       return NextResponse.json(
@@ -451,6 +478,17 @@ export async function GET(request: Request, context: Context) {
           actor.id,
           query.get('realmId') ?? '',
           query.get('member') ?? '',
+        ),
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+    if (path === 'tier-adjustments') {
+      const actor = await requireAccount();
+      return NextResponse.json(
+        await realmTierAdjustments(
+          db(),
+          actor.id,
+          new URL(request.url).searchParams.get('realmId') ?? '',
         ),
         { headers: { 'Cache-Control': 'private, no-store' } },
       );

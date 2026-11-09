@@ -86,7 +86,7 @@ the disposable container as your only backup.
    The current release explicitly supports snapshots from the original,
    Discord, recycling, progression, upgrade, wishlist, settings, trading,
    Discord-command, member-profile, admission, realm-creation and password-revision
-   migrations and their successors through current schema 0027. Older
+   migrations and their successors through current schema 0028. Older
    settings and card rows are migrated during restore with IDs and balances
    preserved. Older backups mark historical characters as already collected
    with zero XP and retain any prior XP as a migration baseline. There are no
@@ -140,7 +140,7 @@ reconciliation and ownership journals, login after recovery, and restores
 of earlier schema revisions into the current schema. Dedicated migration/recovery
 tests cover migration from 0011 to creation receipts and from 0012 to password
 revisions, including recovery of snapshots taken before each change.
-Current schema **0027** keeps encrypted envelope/payload v1: encrypted manifests
+Current schema **0028** keeps encrypted envelope/payload v1: encrypted manifests
 identify the source migrations. Legacy snapshots restore missing password
 revisions as zero and have no creation receipts. Current snapshots preserve
 creation receipts and password revisions; sessions still never restore.
@@ -199,3 +199,8 @@ adjustments) and admin card moves in `card_transfers`; restores check that every
 action matches its wallet entry, card move or undone recycling. Snapshots taken
 before 0027 restore without them. Migration 0026 adds
 `packs.retired_at` for removed packs; older snapshots restore every pack as active.
+Migration 0028 advances realm config to v12 (fame floors, off for existing
+realms) and adds `tier_adjustments`, the journal of applied fame floors and
+manual tiers. Restores check that every character's tier history (economy
+rebalances and adjustments) reconciles with its saved tier and manual tier.
+Snapshots taken before 0028 restore with floors off and no adjustments.

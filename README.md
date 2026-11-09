@@ -14,7 +14,8 @@ exactly one owner. Bakufu is self-hosted, so your community owns its data.
   only one player per realm, and different realms never mix.
 - **Rosters** from MyAnimeList or AniList (opt-in, paced, with artwork only by
   permission), or your own JSON/CSV catalog. Rarity comes from popularity,
-  standing within each series and main-cast role.
+  standing within each series and main-cast role, with fame floors so
+  well-known characters are never stuck low.
 - **Packs** generated from the roster (demographics, genres, eras, Waifus and
   Husbandos) with 1/5/10 openings, tiered reveal animations and sounds, and a
   live feed of big pulls.
@@ -22,8 +23,8 @@ exactly one owner. Bakufu is self-hosted, so your community owns its data.
   collector ranks, trading between players and a gem market.
 - **Discord sign-in** as the main login, plus optional `/bakufu` slash commands.
 - **Administration**: game rules with reviewed previews, packs, characters,
-  reveal sounds per rarity or character, joining and invites, and repair tools
-  for player collections.
+  rarity (fame floors and manual tiers), reveal sounds per rarity or character,
+  joining and invites, and repair tools for player collections.
 - **Your data stays yours**: encrypted backups with automatic restore checks,
   and player exports.
 

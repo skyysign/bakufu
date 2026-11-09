@@ -7,6 +7,7 @@ export * from './trades';
 export * from './starter-packs';
 export * from './character-values';
 export * from './pack-themes';
+export * from './tier-floors';
 
 export type Character = {
   id: string;

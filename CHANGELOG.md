@@ -7,8 +7,18 @@ know which backups it can restore.
 
 ## Unreleased
 
+Newest migration: `0028_tier_adjustments.sql` (realm config v12).
+
 ### Added
 
+- **Fame floors**: MyAnimeList/AniList characters with enough favourites are at
+  least rare (10,000), epic (30,000) or legendary (100,000), whatever the rest of
+  the roster looks like. New realms use them; existing realms keep their tiers
+  until an admin applies floors.
+- **Administration → Rarity**: edit the floors, review every tier change (counts,
+  changed characters, owned cards) and apply them; set one character's tier by
+  hand or return it to automatic; see recent rarity changes. Realm admins only,
+  retry-safe, journaled and included in backups with a restore check.
 - Free hosting guide for **Vercel + Neon** (`docs/deployment/vercel-neon.md`):
   Discord sign-in stays the main login, `/bakufu` slash commands are off.
 - Large uploads (rosters, sounds) are gzip-compressed by the browser; the server
@@ -21,6 +31,10 @@ know which backups it can restore.
 
 ### Changed
 
+- Realm creation and character additions apply fame floors, and the creation
+  preview shows the resulting tier counts. The Game rules form can no longer
+  change floors (use Rarity, which re-tiers with them). The operator economy
+  preset leaves floored and manually tiered characters alone.
 - Shorter README (features, quick start, hosting, docs index); the detailed
   status moved to `docs/implementation-status.md` and the product spec to
   `docs/specification.md`.

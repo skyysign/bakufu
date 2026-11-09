@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { parseRealmConfig, type Tier } from '../../config/src/index';
-import { GameError } from '../../core/src/index';
+import { parseRealmConfig, type RealmConfig, type Tier } from '../../config/src/index';
+import { adjustedTier, GameError } from '../../core/src/index';
 import {
   catalogEntrySchema,
   providerArtworkSchema,
@@ -60,6 +60,7 @@ const additionSchema = z.strictObject({
 });
 
 type CatalogContext = {
+  config: RealmConfig;
   fiveTiers: boolean;
   source: string | null;
   revision: string | null;
@@ -118,6 +119,7 @@ async function catalogContext(
         ).rows.map((row) => Number(row.standing))
       : [];
   return {
+    config,
     fiveTiers: config.tierWeights.epic > 0 || config.tierWeights.legendary > 0,
     source: primary?.source ?? null,
     revision: primary?.revision ?? null,
@@ -247,7 +249,13 @@ export async function checkRealmCharacters(
         results: request.characters.map((character) => ({
           sourceKey: character.sourceKey,
           present: present.has(character.sourceKey),
-          tier: additionTier(character.popularity, context.cohort, context.fiveTiers),
+          tier: adjustedTier(
+            additionTier(character.popularity, context.cohort, context.fiveTiers),
+            null,
+            character.popularity,
+            character.sourceKey,
+            context.config,
+          ),
         })),
       };
     },
@@ -335,13 +343,21 @@ export async function addRealmCharacters(
             tier: additionTier(character.popularity, context.cohort, context.fiveTiers),
             standing: null,
           };
+      // Fame floors lift well-known characters; the computed tier is kept.
+      const tier = adjustedTier(
+        ranked.tier,
+        null,
+        character.popularity,
+        character.sourceKey,
+        context.config,
+      );
       return {
         id: character.id,
         source_key: character.sourceKey,
         name: character.name,
         series: character.series,
         categories: [...new Set(character.categories)].sort(),
-        tier: ranked.tier,
+        tier,
         provenance: {
           source: context.source,
           revision: context.revision,
@@ -357,6 +373,7 @@ export async function addRealmCharacters(
           cohortSize: context.cohort.length,
           ...(ranked.standing === null ? {} : { standing: ranked.standing }),
           ...(character.role ? { role: character.role } : {}),
+          ...(tier === ranked.tier ? {} : { tierBeforeAdjustment: ranked.tier }),
         },
         popularity: character.popularity,
       };

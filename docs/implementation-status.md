@@ -108,6 +108,19 @@ Actual next-draw odds depend on eligible unclaimed tiers. Existing realms keep
 their old rules until the reviewed preset is applied; already awarded character
 tiers and historical receipts are preserved. See [rarity and economy](gameplay/rarity-economy.md).
 
+Tiers come from each character's standing in the realm's own roster, raised by
+**fame floors**: MyAnimeList/AniList characters with at least 10,000 / 30,000 /
+100,000 favourites are at least rare / epic / legendary (realm config v12, never
+for own JSON/CSV catalogs, never into a tier with zero odds). New realms and
+character additions apply them; realms created earlier start with floors off.
+**Administration → Rarity** (realm admins) edits the floors with a reviewed list
+of every tier change, applies them in one transaction with a settings revision,
+sets or clears one character's manual tier, and shows recent changes. Every
+change is journaled (`tier_adjustments`, migration 0028) and restore-checked.
+Covered by `tests/unit/fame-floors.test.ts`,
+`tests/integration/tier-adjustments.test.ts` and the browser check in
+`tests/support/rarity-browser.ts`.
+
 The **Market** lets a player pick an owned card from a searchable card browser and list it for a fixed gem price, another
 player confirm purchase, or the seller cancel. Listed cards are reserved from
 trading/recycling. Sales share the existing confirmed trade and ownership journals

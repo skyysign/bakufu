@@ -6,6 +6,7 @@ import {
   defaultUpgrades,
   disabledRankTracks,
   disabledCharacterValues,
+  disabledFameFloors,
 } from '../../packages/config/src/index';
 export const defaultConfig = {
   ...current,
@@ -20,6 +21,8 @@ export const defaultConfig = {
   rankTracks: disabledRankTracks,
   gemRewards: { ...current.gemRewards, amount: 25 },
   characterValues: disabledCharacterValues,
+  // These fixtures predate fame floors and use original (non-provider) catalogs.
+  fameFloors: disabledFameFloors,
 };
 export function legacyRules<
   T extends {
@@ -28,15 +31,18 @@ export function legacyRules<
     rankTracks?: unknown;
     legacyPurchasesRetired?: boolean;
     characterValues?: unknown;
+    fameFloors?: unknown;
   },
 >(input: T) {
   const {
     rankTracks: _tracks,
     legacyPurchasesRetired: _retired,
     characterValues: _values,
+    fameFloors: _floors,
     ...rules
   } = input;
   void _values;
+  void _floors;
   void _retired;
   void _tracks;
   const three = (values: Record<string, number>) => ({

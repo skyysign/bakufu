@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
-import { parseRealmConfig, realmConfigSchema } from '../../config/src/index';
+import { parseRealmConfig, realmConfigSchema, type RealmConfig } from '../../config/src/index';
 import {
   GameError,
   realmSettingsImpact,
@@ -21,6 +22,16 @@ async function adminRealm(tx: Transaction, actorId: string, realmId: string) {
   if (member.role !== 'admin')
     throw new GameError('FORBIDDEN', 'Only a realm administrator can change settings.', 403);
   return { config: parseRealmConfig(realm.config), revision: realm.config_revision as number };
+}
+// Fame floors re-tier characters, so they change only through the rarity
+// review (Administration → Rarity), which applies the new tiers with them.
+function requireSameFloors(current: RealmConfig, proposed: RealmConfig) {
+  if (!isDeepStrictEqual(current.fameFloors, proposed.fameFloors))
+    throw new GameError(
+      'SETTINGS_INVALID',
+      'Fame floors change card rarities. Change them under Administration → Rarity, where you review every tier change first.',
+      409,
+    );
 }
 async function state(tx: Transaction, realmId: string) {
   const members = (
@@ -94,8 +105,9 @@ export async function previewRealmSettings(
   [actorId, realmId].forEach((value) => z.uuid().parse(value));
   const proposed = realmConfigSchema.parse(input);
   return transaction(db, async (tx) => {
-    const current = await adminRealm(tx, actorId, realmId),
-      currentState = await state(tx, realmId);
+    const current = await adminRealm(tx, actorId, realmId);
+    requireSameFloors(current.config, proposed);
+    const currentState = await state(tx, realmId);
     const now = (await tx.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
     const impact = realmSettingsImpact(
       current.config,
@@ -164,6 +176,7 @@ export async function applyRealmSettings(
         409,
       );
     const proposed = realmConfigSchema.parse(preview.proposed_config);
+    requireSameFloors(current.config, proposed);
     const now = (await tx.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
     const impact = realmSettingsImpact(
       current.config,

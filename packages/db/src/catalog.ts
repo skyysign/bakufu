@@ -15,8 +15,11 @@ import {
   legacyRealmConfigSnapshot,
   tiers,
   starterPackPlanSchema,
+  withoutFameFloors,
+  type Tier,
 } from '../../config/src/index';
 import {
+  adjustedTier,
   availableOdds,
   drawableCount,
   buildStarterPacks,
@@ -70,6 +73,19 @@ export function prepareRealmCatalog(
   }
   if (config.tierWeights.epic > 0 || config.tierWeights.legendary > 0)
     parsed = parseCatalog(parsed.catalog, true);
+  // Fame floors lift well-known provider characters; the computed tier is kept
+  // so the floors can be changed later.
+  const popularity = new Map(parsed.catalog.characters.map((c) => [c.id, c.popularity ?? null]));
+  const floorBases = new Map<string, Tier>();
+  parsed = {
+    ...parsed,
+    characters: parsed.characters.map((c) => {
+      const tier = adjustedTier(c.tier, null, popularity.get(c.id) ?? null, c.sourceKey, config);
+      if (tier === c.tier) return c;
+      floorBases.set(c.id, c.tier);
+      return { ...c, tier };
+    }),
+  };
   const kind = !choice
     ? ('demo' as const)
     : choice.format === 'csv'
@@ -124,13 +140,22 @@ export function prepareRealmCatalog(
   const fingerprint = fingerprintFor(config);
   // Preserve immutable receipts from both pre-reward releases (config v6/v7).
   const legacyFingerprints: string[] = [];
+  const v11 = withoutFameFloors(config);
+  if (
+    typeof input === 'object' &&
+    input !== null &&
+    'schemaVersion' in input &&
+    typeof input.schemaVersion === 'number' &&
+    input.schemaVersion <= 11
+  )
+    legacyFingerprints.push(fingerprintFor(v11));
   if (
     typeof input === 'object' &&
     input !== null &&
     'schemaVersion' in input &&
     (input.schemaVersion === 9 || input.schemaVersion === 10)
   ) {
-    const { characterValues: _values, ...v10 } = config;
+    const { characterValues: _values, ...v10 } = v11;
     void _values;
     if (input.schemaVersion === 10)
       legacyFingerprints.push(fingerprintFor({ ...v10, schemaVersion: 10 }));
@@ -164,6 +189,7 @@ export function prepareRealmCatalog(
   return {
     config,
     parsed,
+    floorBases,
     packs,
     legacyFingerprints,
     preview: {

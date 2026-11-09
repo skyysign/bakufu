@@ -3324,7 +3324,7 @@ preview completes missing fields with defaults; the expectation was corrected.
 At the user's request all realms and their data were removed from the local
 Docker database (`TRUNCATE realms CASCADE`, then a check that every table with a
 `realm_id` is empty); accounts and Discord sign-ins were kept. A full `pg_dump`
-was saved first to `C:PrivateBackupsakufu-before-reset-2026-11-09.dump` (outside
+was saved first to `C:\PrivateBackups\bakufu-before-reset-2026-11-09.dump` (outside
 the repository). Local test leftovers in `.test-data` (old test databases,
 screenshots, logs and one-off scripts, 123 MB) were deleted; a prepared
 1,000-character MyAnimeList roster was kept.
@@ -3346,3 +3346,65 @@ Compose project would also rename the database volume, so it was left alone.
 | `pnpm test:integration` | 346 integration tests across 38 files passed (Wikidata block removed). |
 | `pnpm build` | Production build passed. |
 | `pnpm test:e2e` | Full production browser suite passed. |
+
+## Fame floors and manual tiers
+
+Question from playtesting: why is a well-known character (the example was a
+famous villain) only uncommon, and would AniList data be more complete? Running
+the real tier code on the saved 1,000-character MyAnimeList test roster showed
+the cause is the method, not the data. Both providers count favourites (AniList
+reported fewer for the same character and ranked him lower in his series), and
+tiers are bands relative to the realm's own roster. The same character was rare
+in the 28-series roster (#62 of 1,000) but uncommon in rosters built from only
+the 6, 10 or 15 biggest series (#33, #46, #56), where only the top 12% can be
+rare. The main-cast bonus made no difference in that test.
+
+Built:
+
+- Realm config v12 `fameFloors` (`packages/config/src/fame-floors.ts`): minimum
+  favourites for rare / epic / legendary, each nullable. Defaults 10,000 /
+  30,000 / 100,000 (about 78 / 27 / 7 characters in the 1,000-character test
+  roster). Older configs migrate with floors off.
+- `packages/core/src/tier-floors.ts`: pure rules shared by creation, additions
+  and recalculation. Floors apply only to `mal:`/`anilist:` characters, only
+  raise a tier, and stop at the highest tier with positive odds. A manual tier
+  wins.
+- Realm creation and character additions apply floors; the creation preview
+  counts include them. The computed tier is kept in
+  `provenance.tierBeforeAdjustment`, a manual tier in `provenance.tierOverride`.
+- Migration `0028_tier_adjustments.sql`: config v12 (constraint and existing
+  rows) and the `tier_adjustments` journal (kind `floors` or `override`, change
+  list, settings link, result, request key).
+- `packages/db/src/tier-adjustments.ts`: view, preview (hash over the planned
+  changes and settings revision), apply (new settings revision plus re-tiering
+  in one transaction, replay by request key, stale previews refused), manual
+  tier set/clear, and a restore validator. The validator chains economy
+  rebalances and adjustments per character, checks the final and manual tiers,
+  and checks the settings journal. Realm admins only.
+- The Game rules form can't change floors (`SETTINGS_INVALID`). The operator
+  economy preset leaves floored and manually tiered characters alone, and its
+  validator defers adjusted characters to the new chain check.
+- Backups include `tier_adjustments`; snapshots before 0028 restore without it.
+- API: `GET /api/tier-adjustments`, `POST tier-adjustments/preview`, `/apply`
+  and `/override`. UI: **Administration → Rarity** (counts, floors with
+  "Use recommended" / "Turn all off", review with counts before/after and the
+  changed characters, manual tier search, manual tier list, recent changes).
+
+Tradeoffs: changing a tier changes owned cards' values and future odds; opening
+receipts keep the pulled tier. Floors are one set for both providers
+(calibrated on MyAnimeList). The added-character check preview still uses
+popularity percentiles rather than the full standing formula, as before; floors
+now apply to it.
+
+The first browser run failed in the new check: the tier `<select>` was wrapped
+in its label, so the label text included every option. It now uses a separate
+`for` label. Mobile rows were then stacked into one column after the screenshot
+showed the tier chip overlapping the text.
+
+| Command | Result |
+| --- | --- |
+| `pnpm lint` / `pnpm typecheck` | Passed. |
+| `pnpm test` | 224 unit tests across 40 files passed (6 new in `fame-floors.test.ts`). |
+| `pnpm test:integration` | 354 integration tests across 39 files passed (8 new in `tier-adjustments.test.ts`, legacy migration expectations moved to config v12). |
+| `pnpm build` | Production build passed. |
+| `pnpm test:e2e` | Full production browser suite passed, including the new Rarity check (desktop and 390 px mobile). |

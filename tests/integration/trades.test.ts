@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   disabledCollectorRanks,
   disabledGemRewards,
+  disabledFameFloors,
   type RealmConfig,
 } from '../../packages/config/src/index';
 import { defaultConfig } from '../support/prototype-config';
@@ -501,7 +502,8 @@ describe('atomic two-party trading', () => {
         balance: 90,
         configRevision: 2,
         config: {
-          schemaVersion: 11,
+          schemaVersion: 12,
+          fameFloors: disabledFameFloors,
           packPrice: 12,
           trading: defaultConfig.trading,
           ranks: disabledCollectorRanks,
@@ -511,7 +513,8 @@ describe('atomic two-party trading', () => {
       });
       expect(view.config).toEqual({
         ...after,
-        schemaVersion: 11,
+        schemaVersion: 12,
+        fameFloors: disabledFameFloors,
         legacyPurchasesRetired: false,
         rankTracks: { enabled: false, tracks: [] },
         characterValues: defaultConfig.characterValues,

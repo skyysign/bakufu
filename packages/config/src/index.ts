@@ -12,6 +12,8 @@ import {
   disabledCharacterValues,
 } from './character-values';
 export * from './character-values';
+import { fameFloorsSchema, defaultFameFloors, disabledFameFloors } from './fame-floors';
+export * from './fame-floors';
 
 export const legacyTiers = ['common', 'uncommon', 'rare'] as const;
 export const tiers = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
@@ -198,13 +200,17 @@ const realmConfigV10Schema = realmConfigV9Schema.extend({
   rankTracks: rankTracksSchema,
   legacyPurchasesRetired: z.boolean().default(false),
 });
-export const realmConfigSchema = realmConfigV10Schema.extend({
+const realmConfigV11Schema = realmConfigV10Schema.extend({
   schemaVersion: z.literal(11),
   characterValues: characterValuesSchema,
 });
+export const realmConfigSchema = realmConfigV11Schema.extend({
+  schemaVersion: z.literal(12),
+  fameFloors: fameFloorsSchema,
+});
 export type RealmConfig = z.infer<typeof realmConfigSchema>;
 export const defaultConfig: RealmConfig = realmConfigSchema.parse({
-  schemaVersion: 11,
+  schemaVersion: 12,
   legacyPurchasesRetired: true,
   ownership: 'unique',
   packPrice: 200,
@@ -233,6 +239,7 @@ export const defaultConfig: RealmConfig = realmConfigSchema.parse({
   rankTracks: defaultRankTracks,
   gemRewards: { ...defaultGemRewards, amount: 1000 },
   characterValues: defaultCharacterValues,
+  fameFloors: defaultFameFloors,
 });
 
 // Explicit migration, including strict v1 validation; unknown versions fail closed.
@@ -352,27 +359,44 @@ export function parseRealmConfig(input: unknown): RealmConfig {
     typeof input === 'object' && input !== null && 'schemaVersion' in input
       ? input.schemaVersion
       : undefined;
-  if (version === 11) return realmConfigSchema.parse(input);
+  if (version === 12) return realmConfigSchema.parse(input);
+  // Older realms keep the tiers they were created with: fame floors start off.
+  if (version === 11)
+    return realmConfigSchema.parse({
+      ...realmConfigV11Schema.parse(input),
+      schemaVersion: 12,
+      fameFloors: disabledFameFloors,
+    });
   if (version === 10)
     return realmConfigSchema.parse({
       ...realmConfigV10Schema.parse(input),
-      schemaVersion: 11,
+      schemaVersion: 12,
       characterValues: disabledCharacterValues,
+      fameFloors: disabledFameFloors,
     });
   if (version === 9)
     return realmConfigSchema.parse({
       ...realmConfigV9Schema.parse(input),
-      schemaVersion: 11,
+      schemaVersion: 12,
       rankTracks: disabledRankTracks,
       characterValues: disabledCharacterValues,
+      fameFloors: disabledFameFloors,
     });
   const legacy = parseLegacyRealmConfig(input);
   return realmConfigSchema.parse({
     ...legacy,
-    schemaVersion: 11,
+    schemaVersion: 12,
     tierWeights: { ...legacy.tierWeights, epic: 0, legendary: 0 },
     recycleRewards: { ...legacy.recycleRewards, epic: 0, legendary: 0 },
     rankTracks: disabledRankTracks,
     characterValues: disabledCharacterValues,
+    fameFloors: disabledFameFloors,
   });
+}
+
+/** A v12 config in its v11 shape, for recognizing receipts written before fame floors. */
+export function withoutFameFloors(config: RealmConfig) {
+  const { fameFloors: _floors, ...rest } = config;
+  void _floors;
+  return { ...rest, schemaVersion: 11 as const };
 }

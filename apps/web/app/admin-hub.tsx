@@ -14,12 +14,14 @@ import { RevealSoundsAdmin } from './reveal-sounds-admin';
 import { DiscordGuild } from './discord-guild';
 import { AdmissionSettings } from './admission-settings';
 import { AdminCollections } from './admin-collections';
+import { RarityAdmin } from './tier-adjustments';
 
 export type AdminSection =
   | 'overview'
   | 'rules'
   | 'packs'
   | 'characters'
+  | 'rarity'
   | 'sounds'
   | 'collections'
   | 'access'
@@ -36,6 +38,11 @@ const sectionInfo: Record<AdminSection, { label: string; icon: IconName; hint: s
     label: 'Characters',
     icon: 'collection',
     hint: 'Add missing ones',
+  },
+  rarity: {
+    label: 'Rarity',
+    icon: 'tag',
+    hint: 'Fame floors, manual tiers',
   },
   sounds: {
     label: 'Reveal sounds',
@@ -206,6 +213,7 @@ export function AdminHub({
       'rules',
       'packs',
       'characters',
+      'rarity',
       'sounds',
       'collections',
       'access',
@@ -228,6 +236,7 @@ export function AdminHub({
     characters: false,
     sounds: false,
     collections: false,
+    rarity: false,
     invite: false,
   });
   const setLock = useCallback(
@@ -241,6 +250,7 @@ export function AdminHub({
     [charactersLock] = useState(() => setLock('characters')),
     [soundsLock] = useState(() => setLock('sounds')),
     [collectionsLock] = useState(() => setLock('collections')),
+    [rarityLock] = useState(() => setLock('rarity')),
     [inviteLock] = useState(() => setLock('invite'));
   const busy =
     locks.create ||
@@ -249,6 +259,7 @@ export function AdminHub({
     locks.characters ||
     locks.sounds ||
     locks.collections ||
+    locks.rarity ||
     locks.invite;
   useEffect(() => onLockChange(busy), [busy, onLockChange]);
   useEffect(() => () => onLockChange(false), [onLockChange]);
@@ -466,6 +477,14 @@ export function AdminHub({
               realmId={view.id}
               disabled={locked && !locks.characters}
               onLockChange={charactersLock}
+            />
+          )}
+          {section === 'rarity' && view && canManage && (
+            <RarityAdmin
+              key={`rarity:${view.id}`}
+              realmId={view.id}
+              disabled={locked && !locks.rarity}
+              onLockChange={rarityLock}
             />
           )}
           {section === 'sounds' && view && canManage && (

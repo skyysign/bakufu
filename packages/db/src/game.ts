@@ -75,7 +75,7 @@ export async function createRealm(
   const name = z.string().trim().min(1).max(80).parse(nameInput);
   return transaction(db, async (tx) => {
     await requireInstanceAdmin(tx, actorId);
-    const { config, parsed, packs, preview, legacyFingerprints } = prepareRealmCatalog(
+    const { config, parsed, floorBases, packs, preview, legacyFingerprints } = prepareRealmCatalog(
       input,
       catalog,
       packPlan,
@@ -178,6 +178,7 @@ export async function createRealm(
           ? { standing: Number(parsed.standings.get(c.id)!.score.toFixed(6)) }
           : {}),
         ...(roles.get(c.id) ? { role: roles.get(c.id) } : {}),
+        ...(floorBases.has(c.id) ? { tierBeforeAdjustment: floorBases.get(c.id) } : {}),
         ...('artwork' in c && c.artwork ? { artwork: c.artwork } : {}),
         ...(importKind === undefined ? {} : { importKind, rightsConfirmed: true }),
       },

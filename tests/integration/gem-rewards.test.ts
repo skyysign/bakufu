@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   disabledGemRewards,
+  disabledFameFloors,
   parseRealmConfig,
   type RealmConfig,
 } from '../../packages/config/src/index';
@@ -338,7 +339,8 @@ describe('transactional timed gem claims', () => {
         (await legacy.query('SELECT config FROM realms WHERE id=$1', [id])).rows[0].config,
       ).toEqual({
         ...previous,
-        schemaVersion: 11,
+        schemaVersion: 12,
+        fameFloors: disabledFameFloors,
         legacyPurchasesRetired: false,
         rankTracks: { enabled: false, tracks: [] },
         characterValues: defaultConfig.characterValues,

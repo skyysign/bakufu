@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   disabledCollectorRanks,
   disabledGemRewards,
+  disabledFameFloors,
   type RealmConfig,
 } from '../../packages/config/src/index';
 import { defaultConfig } from '../support/prototype-config';
@@ -313,9 +314,7 @@ describe('signed Discord gameplay with shared PostgreSQL state', () => {
     expect((await deliver(command(r, 'open', 'Battle Arena'))).data.content).toContain(
       'Confirm within',
     );
-    expect((await deliver(command(r, 'open', genrePack))).data.content).toContain(
-      'Confirm within',
-    );
+    expect((await deliver(command(r, 'open', genrePack))).data.content).toContain('Confirm within');
     expect((await deliver(command(r, 'open', 'Shōnen'))).data.content).toContain('Confirm within');
     const first = await click(r, priorQuote);
     expect(first.data.content).toContain('Pack opened');
@@ -545,7 +544,8 @@ describe('signed Discord gameplay with shared PostgreSQL state', () => {
         expect(realm.config.schemaVersion).toBe(6);
         realm.config = {
           ...realm.config,
-          schemaVersion: 11,
+          schemaVersion: 12,
+          fameFloors: disabledFameFloors,
           legacyPurchasesRetired: false,
           rankTracks: { enabled: false, tracks: [] },
           characterValues: defaultConfig.characterValues,

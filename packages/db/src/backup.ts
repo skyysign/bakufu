@@ -6,6 +6,7 @@ import { validatePackBundleBackup } from './pack-bundle-backup';
 import { validateRankBackup } from './rank-backup';
 import { validateRankTrackBackup } from './rank-track-backup';
 import { validateEconomyRebalances } from './economy-preset';
+import { validateTierAdjustments } from './tier-adjustments';
 import { effectiveMemberConfig } from './rank-track-state';
 import { validateMarketBackup } from './market-backup';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from 'node:crypto';
@@ -238,6 +239,23 @@ const columns = {
     'result',
     'created_at',
   ],
+  tier_adjustments: [
+    'realm_id',
+    'id',
+    'account_id',
+    'request_key',
+    'kind',
+    'preview_hash',
+    'config_change_id',
+    'before_floors',
+    'after_floors',
+    'character_id',
+    'override_before',
+    'override_after',
+    'changes',
+    'result',
+    'created_at',
+  ],
   market_listings: [
     'realm_id',
     'id',
@@ -328,6 +346,8 @@ function columnsForMigrations(
   )
     throw new Error('Unsupported backup schema. Use the matching source release.');
   const source: Partial<Record<keyof typeof columns, readonly string[]>> = { ...columns };
+  if (!migrations.some((migration) => migration.name === '0028_tier_adjustments.sql'))
+    delete source.tier_adjustments;
   if (!migrations.some((migration) => migration.name === '0027_admin_collections.sql')) {
     delete source.admin_collection_actions;
     source.card_transfers = columns.card_transfers.filter((field) => field !== 'admin_action_id');
@@ -569,7 +589,8 @@ export async function restoreBackup(
         await tx.query(
           `INSERT INTO ${table} (${fields.join(',')}) VALUES (${fields.map((_, i) => `$${i + 1}`).join(',')})`,
           fields.map((field) =>
-            table === 'economy_rebalances' && field === 'tier_changes'
+            (table === 'economy_rebalances' && field === 'tier_changes') ||
+            (table === 'tier_adjustments' && field === 'changes')
               ? JSON.stringify(row[field])
               : table === 'realms' && field === 'config'
                 ? parseRealmConfig(row[field])
@@ -683,6 +704,7 @@ export async function restoreBackup(
     await validateRankBackup(tx);
     await validateRankTrackBackup(tx);
     await validateEconomyRebalances(tx);
+    await validateTierAdjustments(tx);
     await validateGemRewardBackup(tx);
     await validateAdminGemGrants(tx);
     await validateArtworkReferences(tx);

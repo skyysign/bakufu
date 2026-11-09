@@ -123,10 +123,51 @@ Players & access**.
 
 ## Updating
 
-1. Pull or make your changes, then check `CHANGELOG.md`: if the new version adds
-   a migration, run the step 2 `db:migrate` command first (with a fresh
-   `docker compose build web`).
-2. `git push`. Vercel builds and deploys automatically.
+Vercel deploys whatever you push, but it never changes the database. When a new
+version adds a **migration** (new tables or columns), you apply it to Neon from
+your PC first. `CHANGELOG.md` says so under the version: "Newest migration:
+`00xx_….sql`". Without a new migration, an update is just `git push`.
+
+With a new migration, do these four steps in PowerShell in the project folder.
+Pick a moment when nobody is playing:
+
+1. **Get the new version and rebuild the image** the commands run in. This only
+   builds the image; a running local server keeps its old version until you
+   restart it.
+
+   ```powershell
+   git pull
+   docker compose build web
+   ```
+
+   (Skip `git pull` if the changes were made on this PC.)
+
+2. **Back up Neon** (recommended), with a new file name each time. It asks for a
+   passphrase:
+
+   ```powershell
+   docker compose run --rm --no-deps -e DATABASE_URL='postgresql://…direct…' --volume C:\PrivateBackups:/backups web pnpm backup /backups/bakufu-before-update.backup
+   ```
+
+3. **Migrate Neon** with the **direct** connection string (Neon → your project
+   → **Connect** → turn **Connection pooling** off → copy; its host name has no
+   `-pooler`). Keep the single quotes: the string contains `&`.
+
+   ```powershell
+   docker compose run --rm --no-deps -e DATABASE_URL='postgresql://…direct…' web pnpm db:migrate
+   ```
+
+   It prints `Database migrations applied.` All new migrations run in one
+   transaction: if something fails, nothing is changed and the old site keeps
+   working. Running it again is harmless, because applied migrations are
+   skipped.
+
+4. **Deploy:** `git push`. Vercel builds and deploys in a minute or two (watch
+   **Deployments** in Vercel).
+
+Between steps 3 and 4 the old site runs against the new database, and pages may
+show errors until the deploy finishes. That's why to pick a quiet moment. Not
+deployed yet? Then step 2 of the setup above with the new image is all you need.
 
 ## Backups
 

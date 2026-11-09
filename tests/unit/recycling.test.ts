@@ -3,6 +3,7 @@ import {
   parseRealmConfig,
   disabledCollectorRanks,
   disabledGemRewards,
+  disabledFameFloors,
 } from '../../packages/config/src/index';
 import { defaultConfig } from '../support/prototype-config';
 import { calculateRecycleCredit } from '../../packages/core/src/index';
@@ -13,7 +14,8 @@ describe('versioned recycling rules', () => {
     const upgraded = parseRealmConfig(legacyConfig);
     expect(upgraded).toEqual({
       ...legacyConfig,
-      schemaVersion: 11,
+      schemaVersion: 12,
+      fameFloors: disabledFameFloors,
       legacyPurchasesRetired: false,
       rankTracks: defaultConfig.rankTracks,
       characterValues: defaultConfig.characterValues,

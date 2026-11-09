@@ -55,6 +55,59 @@ the realm's saved standings with the same rules. Existing realms keep their save
 tiers; only new realms use the standing formula. Three-tier legacy realms keep
 popularity-only percentiles.
 
+### Fame floors and manual tiers
+
+The standing bands are relative to the realm's own roster. In a realm built only
+from hit series, dozens of characters out-favourite a well-known one: in a test
+roster of the 10 biggest series (250 characters), a villain with 13,000
+MyAnimeList favourites ranked 46th and missed the rare band, which holds only the
+top 12%. MyAnimeList and AniList agree on such rankings (AniList usually reports
+fewer favourites), so switching provider doesn't help.
+
+**Fame floors** set a minimum rarity by favourites, whatever the rest of the
+roster looks like. The defaults for new realms:
+
+| Floor     | Favourites | Characters above it in a 1,000-character roster of popular series |
+| --------- | ---------- | ----------------------------------------------------------------- |
+| Rare      | 10,000     | about 78                                                          |
+| Epic      | 30,000     | about 27                                                          |
+| Legendary | 100,000    | about 7                                                           |
+
+- A floor only ever raises a character; it never lowers the tier its standing gave
+  it.
+- Floors apply only to MyAnimeList and AniList characters. Own JSON/CSV catalogs
+  have no shared popularity scale and are never affected.
+- A floor never lifts a character into a tier no pack can draw (zero odds); it
+  stops at the highest drawable tier.
+- They are calibrated on MyAnimeList. AniList counts are similar for recent
+  series and lower for older ones, so AniList realms may want lower floors.
+- Realm creation applies the floors before the preview, so the tier counts the
+  wizard shows are the ones the realm gets. Characters added later get them too.
+
+Floors live in realm config v12 (`fameFloors`; empty means off). Realms created
+before this release start with floors off and keep their tiers until an admin
+applies floors under **Administration → Rarity**. There the admin edits the
+floors (or picks **Use recommended**), reviews every tier change (tier counts
+before and after, each changed character, and how many are in players'
+collections), then applies. Applying saves the floors as a new settings revision
+and re-tiers the roster in one transaction. A retry with the same request key
+replays the result, and a review made stale by any other change is refused.
+Lowering or removing floors returns characters to their computed tier, which is
+kept in `provenance.tierBeforeAdjustment`. The ordinary **Game rules** form can't
+change floors, so floors and tiers never drift apart.
+
+A **manual tier** fixes one character's rarity (any tier packs can draw). Fame
+floors no longer move that character until the admin returns it to
+**Automatic**. Manual tiers are listed with the tier the character would get
+automatically.
+
+Changing a tier affects owned cards: recycling values, the suggested market price
+and future pull odds follow the new tier. Opening receipts keep the tier a card
+was pulled at. Every change is journaled in `tier_adjustments` and included in
+backups; a restore checks that each character's tier history (rebalances and
+adjustments) reconciles with its saved tier. The operator economy preset below
+leaves floored and manually tiered characters alone.
+
 The values were rescaled (previously 20 / 60 / 200 / 1,000 / 5,000 gems) so the
 rarest, most popular characters are worth a little over 1,000 gems, close to
 Mudae's kakera values, instead of 250–500 times a common card. The range column

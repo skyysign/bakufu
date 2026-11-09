@@ -28,4 +28,5 @@ export const migrationNames = [
   '0025_character_sounds.sql',
   '0026_pack_retirement.sql',
   '0027_admin_collections.sql',
+  '0028_tier_adjustments.sql',
 ] as const;

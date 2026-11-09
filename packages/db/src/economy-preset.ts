@@ -39,8 +39,11 @@ async function review(tx: Transaction, actorId: string, realmId: string) {
   };
   const characters = (
     await tx.query(
+      // Characters an admin re-tiered (fame floor or manual tier) keep their
+      // tier, like awarded ones.
       `SELECT c.id,c.tier,c.provenance->>'rarityBeforeExpansion' AS original_tier,
-    EXISTS(SELECT 1 FROM cards owned WHERE owned.realm_id=c.realm_id AND owned.character_id=c.id) AS awarded
+    (EXISTS(SELECT 1 FROM cards owned WHERE owned.realm_id=c.realm_id AND owned.character_id=c.id)
+      OR c.provenance ?| ARRAY['tierOverride','tierBeforeAdjustment']) AS awarded
     FROM characters c WHERE c.realm_id=$1 ORDER BY c.id`,
       [realmId],
     )
@@ -227,7 +230,24 @@ export async function applyEconomyPreset(
 }
 
 export async function validateEconomyRebalances(tx: Transaction) {
-  const finalChanges = new Map<string, { realmId: string; characterId: string; tier: Tier }>();
+  const finalChanges = new Map<
+    string,
+    { realmId: string; characterId: string; tier: Tier; at: Date }
+  >();
+  // Characters an admin re-tiered later: validateTierAdjustments checks their
+  // full tier history; here only the rebalance itself is checked.
+  const adjusted = new Set<string>();
+  if (
+    (await tx.query("SELECT to_regclass('tier_adjustments') IS NOT NULL AS present")).rows[0]
+      .present
+  )
+    for (const row of (
+      await tx.query(
+        `SELECT DISTINCT t.realm_id,change->>'characterId' AS id FROM tier_adjustments t
+        CROSS JOIN LATERAL jsonb_array_elements(t.changes) change`,
+      )
+    ).rows)
+      adjusted.add(row.realm_id + ':' + row.id);
   for (const row of (
     await tx.query(
       'SELECT e.*,c.before_config AS journal_before,c.after_config AS journal_after,c.result AS journal_result FROM economy_rebalances e JOIN realm_config_changes c ON c.realm_id=e.realm_id AND c.id=e.id ORDER BY e.realm_id,c.to_revision',
@@ -248,16 +268,31 @@ export async function validateEconomyRebalances(tx: Transaction) {
       if (change.before === change.after) throw new Error('Economy tier change is invalid.');
       const key = row.realm_id + ':' + change.characterId;
       const previous = finalChanges.get(key);
-      if (previous && previous.tier !== change.before)
+      if (previous && previous.tier !== change.before && !adjusted.has(key))
         throw new Error('Economy tier history is inconsistent.');
       finalChanges.set(key, {
         realmId: row.realm_id,
         characterId: change.characterId,
         tier: change.after,
+        at: row.created_at,
       });
     }
   }
-  for (const change of finalChanges.values()) {
+  for (const [key, change] of finalChanges) {
+    if (adjusted.has(key)) {
+      // The rebalance must not have changed a character pulled before it.
+      if (
+        (
+          await tx.query(
+            `SELECT 1 FROM openings o CROSS JOIN LATERAL jsonb_array_elements(COALESCE(o.result->'characters','[]'::jsonb)) awarded
+            WHERE o.realm_id=$1 AND awarded->>'id'=$2 AND awarded->>'tier'<>$3 AND o.created_at<$4 LIMIT 1`,
+            [change.realmId, change.characterId, change.tier, change.at],
+          )
+        ).rowCount
+      )
+        throw new Error('Economy rebalance changed a previously awarded character.');
+      continue;
+    }
     const character = (
       await tx.query(
         `SELECT c.id FROM characters c WHERE c.realm_id=$1 AND c.id=$2 AND c.tier=$3 AND NOT EXISTS(SELECT 1 FROM openings o CROSS JOIN LATERAL jsonb_array_elements(COALESCE(o.result->'characters','[]'::jsonb)) awarded WHERE o.realm_id=c.realm_id AND awarded->>'id'=c.id::text AND awarded->>'tier'<>$3)`,

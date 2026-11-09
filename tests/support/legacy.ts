@@ -112,6 +112,7 @@ export async function seedLegacyRealm(
     | 'ranks'
     | 'gemRewards'
     | 'characterValues'
+    | 'fameFloors'
   > & {
     tierWeights: { common: number; uncommon: number; rare: number };
     schemaVersion: 1;
