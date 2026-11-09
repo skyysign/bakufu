@@ -1,6 +1,7 @@
 # Opt-in after local backup setup. Never enables public object ACLs or cloud deletion.
 services:
   offsite:
+    image: ${BAKUFU_IMAGE:-ghcr.io/skyysign/bakufu:latest}
     build:
       context: .
       dockerfile: infra/docker/Dockerfile

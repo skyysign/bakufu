@@ -1,4 +1,7 @@
 name: card-engine
+# The game image: by default the ready-made one from GitHub's registry
+# (`docker compose pull` updates it). `docker compose up --build -d` builds it
+# from this checkout instead. Set BAKUFU_IMAGE in .env to pin a version.
 services:
   db:
     image: postgres:18-bookworm
@@ -15,6 +18,7 @@ services:
       retries: 20
     restart: unless-stopped
   migrate:
+    image: ${BAKUFU_IMAGE:-ghcr.io/skyysign/bakufu:latest}
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
@@ -33,6 +37,7 @@ services:
     command: ["pnpm", "db:migrate"]
     restart: "no"
   web:
+    image: ${BAKUFU_IMAGE:-ghcr.io/skyysign/bakufu:latest}
     build:
       context: .
       dockerfile: infra/docker/Dockerfile

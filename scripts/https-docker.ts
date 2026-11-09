@@ -32,7 +32,7 @@ try {
       'inspect',
       '--format',
       '{{.Id}}',
-      process.env.BACKUP_TEST_IMAGE ?? 'card-engine-web:latest',
+      process.env.BACKUP_TEST_IMAGE ?? 'ghcr.io/skyysign/bakufu:latest',
     ]),
     caddy = 'caddy:2.11-alpine';
   await docker(['image', 'inspect', '--format', '{{.Id}}', caddy]);

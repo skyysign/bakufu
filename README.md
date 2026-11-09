@@ -37,7 +37,7 @@ exactly one owner. Bakufu is self-hosted, so your community owns its data.
 
 ## Quick start (Docker on your PC)
 
-1. Install Docker Desktop and clone this repository.
+1. Install Docker Desktop and clone this repository (or download it as a ZIP).
 2. Copy `.env.example` to `.env` and replace the example database password (it
    appears twice) with one long random value.
 3. Set up Discord sign-in: create an application in the Discord Developer
@@ -47,8 +47,12 @@ exactly one owner. Bakufu is self-hosted, so your community owns its data.
 4. Start it:
 
    ```sh
-   docker compose up --build -d
+   docker compose up -d
    ```
+
+   This downloads the ready-made Bakufu image (Intel/AMD and ARM, such as a
+   Raspberry Pi); nothing is compiled on your machine. To build from the source
+   instead, use `docker compose up --build -d`.
 
 5. Open <http://localhost:3000>, sign in with Discord (you become the admin),
    then go to **Administration → New realm**.

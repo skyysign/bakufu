@@ -57,10 +57,10 @@ verification follow [Discord's interaction endpoint documentation](https://docs.
 
    Keep the existing `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`. All three
    must refer to the same application. Never paste the secret into chat.
-2. Rebuild the deployment:
+2. Apply the settings:
 
    ```powershell
-   docker compose up --build -d
+   docker compose up -d
    ```
 
    This applies any pending migrations and passes the optional public key to the app.

@@ -11,6 +11,11 @@ Newest migration: `0030_trade_proposals.sql` (realm config v12).
 
 ### Added
 
+- **Ready-made Docker image** `ghcr.io/skyysign/bakufu` for Intel/AMD and ARM
+  (for example a Raspberry Pi): CI publishes it after the checks pass (`latest`
+  follows `main`, version tags get their own tag). `docker compose up -d` now
+  downloads it instead of building from source; `--build` still builds locally.
+  `BAKUFU_IMAGE` in `.env` pins a version.
 - Ready for a public repository: README banner, `SECURITY.md` (private
   vulnerability reports) and `CONTRIBUTING.md`.
 - **Trades redesigned**: New trade → pick a player → choose what you give and

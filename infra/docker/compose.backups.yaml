@@ -1,6 +1,7 @@
 # Opt-in: docker compose -f compose.yaml -f infra/docker/compose.backups.yaml ...
 services:
   backups:
+    image: ${BAKUFU_IMAGE:-ghcr.io/skyysign/bakufu:latest}
     build:
       context: .
       dockerfile: infra/docker/Dockerfile

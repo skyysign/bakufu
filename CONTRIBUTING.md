@@ -23,7 +23,9 @@ the approach.
    ```
 
    For interface changes, also run `pnpm test:e2e` if you can. Tests use
-   fixtures and a disposable PostgreSQL; they never call external character APIs.
+   fixtures and a disposable PostgreSQL; they never call external character
+   APIs. To try your changes in Docker, build the image from your checkout with
+   `docker compose up --build -d` (plain `up -d` runs the published image).
 4. **Keep the docs in step.** Note user-visible changes under "Unreleased" in
    [CHANGELOG.md](CHANGELOG.md). Schema changes need a new migration (never edit
    one that has shipped) and backup/restore support for it.

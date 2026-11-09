@@ -30,7 +30,7 @@ try {
     'inspect',
     '--format',
     '{{.Id}}',
-    process.env.BACKUP_TEST_IMAGE ?? 'card-engine-web:latest',
+    process.env.BACKUP_TEST_IMAGE ?? 'ghcr.io/skyysign/bakufu:latest',
   ]);
   assert.match(image, /^sha256:[a-f0-9]+$|^[a-f0-9]{12,64}$/);
   root = await mkdtemp(join(tmpdir(), 'card-engine-docker-backup-'));

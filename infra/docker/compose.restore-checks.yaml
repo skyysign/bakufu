@@ -17,6 +17,7 @@ services:
       retries: 20
     restart: unless-stopped
   restore-check-init:
+    image: ${BAKUFU_IMAGE:-ghcr.io/skyysign/bakufu:latest}
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
@@ -51,6 +52,7 @@ services:
     command: ["verify-init"]
     restart: "no"
   restore-check:
+    image: ${BAKUFU_IMAGE:-ghcr.io/skyysign/bakufu:latest}
     build:
       context: .
       dockerfile: infra/docker/Dockerfile

@@ -51,10 +51,10 @@ tests. [Slash commands](discord-gameplay.md) have a separate setup. The
 
    Do not paste the secret into chat or commit `.env`. The checked-in
    `.env.example` has empty optional fields only.
-7. Rebuild/restart from the project directory:
+7. Apply the settings from the project directory:
 
    ```powershell
-   docker compose up --build -d
+   docker compose up -d
    ```
 
    Migrations upgrade the schema before the web service starts. Open

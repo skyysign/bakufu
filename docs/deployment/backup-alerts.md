@@ -36,7 +36,7 @@ directory and repository. Do not put its SQLite file on a network filesystem.
    ```sh
    docker compose -f compose.yaml -f infra/docker/compose.alerts.yaml run --rm --no-deps backup-alerts monitor-init
    docker compose -f compose.yaml -f infra/docker/compose.alerts.yaml run --rm --no-deps backup-alerts monitor-once
-   docker compose -f compose.yaml -f infra/docker/compose.alerts.yaml up -d --build --no-deps backup-alerts
+   docker compose -f compose.yaml -f infra/docker/compose.alerts.yaml up -d --no-deps backup-alerts
    docker compose -f compose.yaml -f infra/docker/compose.alerts.yaml exec backup-alerts pnpm backup:monitor:status
    ```
 

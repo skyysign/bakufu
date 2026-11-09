@@ -222,22 +222,11 @@ offered cards are reserved, edits reset confirmations, and offers expire after
 [recycling rules and validation](gameplay/recycling.md) for its defaults,
 schema migration and remaining limits.
 
-For the Docker reference quickstart, copy `.env.example` to `.env`, replace the
-example database password in both fields with the same long URL-safe value,
-then run:
-
-```sh
-docker compose up --build -d
-docker compose exec web pnpm bootstrap
-```
-
-Open <http://localhost:3000>, sign in, open **Administration → New realm** and follow its five steps (name, characters, packs, rules, review), then select **Create realm** and open a pack.
-Bootstrap prompts for a private admin password; there is no default account.
-Local passwords accept 12–256 characters; the database password in `.env` is
-separate. Bootstrap must finish with **Account ready** before login.
-Use **Account settings** to change a local password and sign out other sessions;
-see [password changes](deployment/account-settings.md).
-Use `docker compose exec web pnpm player:create` to provision an invited player.
+To run it, follow [self-hosting with Docker](deployment/quickstart.md): set up
+Discord sign-in, start the ready-made image (`ghcr.io/skyysign/bakufu`, published
+by CI after the checks pass) with `docker compose up -d`, sign in as the admin
+and create a realm under **Administration → New realm**. Local accounts
+(`pnpm bootstrap`, `pnpm player:create`) remain as a fallback.
 Alternatively, configure [Discord sign-in](deployment/discord-login.md) for
 password-free first-admin setup and invited players. Existing accounts can be
 explicitly linked while keeping their collections and permissions.

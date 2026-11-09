@@ -1,6 +1,7 @@
 # Opt-in public HTTPS. See docs/deployment/https.md.
 services:
   https-check:
+    image: ${BAKUFU_IMAGE:-ghcr.io/skyysign/bakufu:latest}
     build:
       context: .
       dockerfile: infra/docker/Dockerfile

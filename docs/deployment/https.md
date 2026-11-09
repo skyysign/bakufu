@@ -60,7 +60,7 @@ requires its own reviewed network configuration.
 Use both files in this order for every deployment command:
 
 ```sh
-docker compose -f compose.yaml -f infra/docker/compose.https.yaml build
+docker compose -f compose.yaml -f infra/docker/compose.https.yaml pull
 docker compose -f compose.yaml -f infra/docker/compose.https.yaml run --rm --no-deps https-check
 ```
 
@@ -153,8 +153,9 @@ startup; independent recovery checks exercise data integrity. Add your own
 monitoring/alerting at the host boundary.
 
 Before updating, capture an off-machine encrypted backup and test recovery.
-Retain the prior release/image and matching recovery settings. Pull reviewed
-base/proxy updates, rebuild, and use the same Compose files for `up --build -d`.
+Note the image version you run so you can return to it (pin it with
+`BAKUFU_IMAGE` in `.env`). To update, run `git pull`, then `pull` and `up -d`
+with the same Compose files.
 Migrations finish before the web starts; readiness gates proxy startup. This
 single-host recipe does not promise zero downtime. Do not downgrade across an
 incompatible schema; restore into a separate fresh project/database for recovery.

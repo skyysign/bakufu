@@ -15,7 +15,9 @@ internet, continue with [HTTPS hosting](https.md) afterwards.
 - **A Discord application** for sign-in. It's free and takes a few minutes
   (step 2).
 - **This repository:** `git clone https://github.com/skyysign/bakufu.git`, or
-  download it as a ZIP from GitHub.
+  download it as a ZIP from GitHub. It provides the Compose files and the
+  settings template; Bakufu itself comes as a ready-made image, so nothing is
+  compiled on your machine.
 
 ## 1. Create `.env`
 
@@ -57,12 +59,16 @@ More detail and pictures: [Discord sign-in](discord-login.md).
 ## 3. Start Bakufu
 
 ```sh
-docker compose up --build -d
+docker compose up -d
 ```
 
-The first build takes a few minutes. This starts PostgreSQL, applies the
+The first start downloads the Bakufu image (`ghcr.io/skyysign/bakufu`, for
+Intel/AMD and ARM such as a Raspberry Pi) and PostgreSQL. Then it applies the
 database migrations and starts the website at <http://localhost:3000>. Port 3000
 is reachable only from this computer.
+
+To build the image from the source instead (for example with your own changes),
+use `docker compose up --build -d`; that takes a few minutes.
 
 ## 4. Sign in and create a realm
 
@@ -94,7 +100,8 @@ or VPS with your own domain). Register that address's callback in Discord too.
 | Stop / start | `docker compose stop` / `docker compose start` |
 | Status and logs | `docker compose ps`, `docker compose logs web --tail 100` |
 | Apply changed `.env` settings | `docker compose up -d` |
-| Update to a new version | back up first, then `git pull` and `docker compose up --build -d` (migrations run automatically) |
+| Update to a new version | back up first, then `git pull`, `docker compose pull` and `docker compose up -d` (migrations run automatically) |
+| Stay on one version | set `BAKUFU_IMAGE` in `.env` to a tag from the [package page](https://github.com/skyysign/bakufu/pkgs/container/bakufu); `latest` is the newest tested version of `main` |
 | Back up | see below |
 
 Back up into a private folder outside the project (it asks for a passphrase;

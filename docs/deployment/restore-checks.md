@@ -34,7 +34,7 @@ initializes its control metadata, and starts the weekly checker. Your existing
 backup destination must already contain a fresh snapshot.
 
 ```sh
-docker compose -f compose.yaml -f infra/docker/compose.backups.yaml -f infra/docker/compose.restore-checks.yaml up --build -d restore-check
+docker compose -f compose.yaml -f infra/docker/compose.backups.yaml -f infra/docker/compose.restore-checks.yaml up -d restore-check
 ```
 
 Run an additional check now and inspect status:
