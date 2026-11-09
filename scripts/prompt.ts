@@ -30,6 +30,9 @@ export async function promptSecret(label: string): Promise<string> {
           return;
         }
         if (char === '\r' || char === '\n') {
+          // Windows terminals can send Enter as \r and \n in separate reads;
+          // an empty line would otherwise answer the next prompt.
+          if (!value) continue;
           cleanup();
           resolve(value);
           return;

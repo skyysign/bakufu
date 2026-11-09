@@ -190,3 +190,8 @@ Restoring works like step 2 into a fresh, empty Neon database.
 - **Database connection errors on Vercel:** use the pooled string; if it ends
   with `&channel_binding=require` and connections fail, remove that part.
 - **Slow first page:** normal after a quiet period while Neon wakes up.
+- **"SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca'…"**
+  when running commands: harmless, the connection is already fully verified. To
+  silence it, change `sslmode=require` to `sslmode=verify-full` in the string.
+- **Backup or migrate fails:** the message names the cause. "No Bakufu tables
+  yet" means the database was never set up: run the step 2 `db:migrate` command.

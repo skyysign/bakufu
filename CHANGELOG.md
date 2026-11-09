@@ -31,6 +31,11 @@ Newest migration: `0028_tier_adjustments.sql` (realm config v12).
 
 ### Changed
 
+- `pnpm backup` and `pnpm restore` say what went wrong (passphrase too short or
+  not matching, file exists, folder not shared with Docker, empty or outdated
+  database, login refused, host unreachable) instead of one generic message;
+  they never print raw error text. An empty line at a hidden passphrase prompt
+  is ignored.
 - Realm creation and character additions apply fame floors, and the creation
   preview shows the resulting tier counts. The Game rules form can no longer
   change floors (use Rarity, which re-tiers with them). The operator economy
