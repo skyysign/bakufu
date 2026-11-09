@@ -61,14 +61,13 @@ and players with `docker compose exec web pnpm player:create`. More detail:
 
 | Option | Cost | Guide |
 | --- | --- | --- |
-| Free: Vercel + Neon (Discord sign-in, no slash commands, rosters up to about 2,000 characters) | Free tiers | [vercel-neon.md](docs/deployment/vercel-neon.md) |
+| Free: Vercel + Neon (Discord sign-in, no slash commands, rosters up to about 5,000 characters) | Free tiers | [vercel-neon.md](docs/deployment/vercel-neon.md) |
 | Your own server with Docker and HTTPS | A small VPS | [https.md](docs/deployment/https.md) |
-| Short public test from your PC (Cloudflare quick tunnel) | Free | [public-test.md](docs/deployment/public-test.md) |
 
 > **Free tiers have monthly limits.** Neon Free allows 5 GB of database
 > transfer a month; when it runs out the database pauses until the next month.
-> Keep realms under about 2,000 characters there and check the usage now and
-> then: [how big can a realm get?](docs/deployment/vercel-neon.md#how-big-can-a-realm-get)
+> Up to about 5,000 characters per realm should be fine there; check the usage
+> in the first weeks: [how big can a realm get?](docs/deployment/vercel-neon.md#how-big-can-a-realm-get)
 > Self-hosting with Docker has no such limit.
 
 Back up before every update: [backups](docs/deployment/backups.md),
@@ -80,7 +79,6 @@ Back up before every update: [backups](docs/deployment/backups.md),
 - **Setup:** [run guide](docs/deployment/quickstart.md),
   [Discord sign-in](docs/deployment/discord-login.md),
   [Discord commands](docs/deployment/discord-gameplay.md),
-  [Discord test with a tunnel](docs/deployment/discord-playtest.md),
   [account settings](docs/deployment/account-settings.md),
   [restore checks](docs/deployment/restore-checks.md),
   [backup alerts](docs/deployment/backup-alerts.md)

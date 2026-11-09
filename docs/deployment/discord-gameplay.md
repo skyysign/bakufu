@@ -39,7 +39,7 @@ Your current `http://localhost:3000` website remains fully playable. Leave
 tests use local signed fixtures and never contact your Discord application.
 
 To receive real commands, Discord must reach your web service through a public
-HTTPS URL. This can be your eventual host or an HTTPS tunnel you control; the
+HTTPS URL, such as your own server with the [HTTPS recipe](https.md); the
 deployment still uses the same persistent PostgreSQL database. If you change
 `APP_ORIGIN`, update the Discord OAuth callback to match and use secure cookies
 for HTTPS. See [the sign-in guide](discord-login.md). Endpoint setup and signature

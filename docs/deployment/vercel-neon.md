@@ -6,8 +6,8 @@ Run Bakufu without your own computer on two free tiers: the website on
 The `/bakufu` slash commands are turned off on this setup, so everything happens
 on the website.
 
-> **Free tiers have monthly limits.** Keep a realm under about **2,000
-> characters** here and check Neon's usage now and then; see
+> **Free tiers have monthly limits.** Up to about **5,000 characters** per realm
+> should be fine here; check Neon's usage in the first weeks; see
 > [How big can a realm get?](#how-big-can-a-realm-get) below. When a limit runs
 > out, Neon pauses the database until the next month and the site shows
 > "temporarily unavailable".
@@ -20,7 +20,7 @@ on the website.
 | Discord sign-in | Yes | Yes |
 | `/bakufu` slash commands | No (they need fast, always-awake replies) | Yes |
 | Scheduled backups | No worker; run backups from your PC | Backup worker |
-| Address | Permanent `your-project.vercel.app` | Your domain or tunnel |
+| Address | Permanent `your-project.vercel.app` | Your own domain |
 | First visit after a quiet period | 1–2 s slower while things wake up | Instant |
 
 Limits to know (free plans as of late 2026; check Neon's and Vercel's pricing
@@ -69,13 +69,12 @@ Rough guidance for the 5 GB Neon Free transfer:
 
 | Roster | On Vercel + Neon Free |
 | --- | --- |
-| up to about 2,000 characters | comfortable for a small community (around 20 players playing about an hour a day) |
-| 2,000–5,000 | works, but watch the usage and avoid many roster changes per day |
+| up to about 5,000 characters | should be fine for a small community (around 20 players playing about an hour a day); check the usage in the first weeks and avoid many roster changes per day |
 | more than 5,000 | use a paid Neon plan or self-host with Docker (no transfer limit) |
 
 These are estimates, not promises: how often Vercel starts instances and how
 much people play matter more than anything else. The realm wizard and **Grow the
-roster** show a note above 2,000 characters.
+roster** show a note above 5,000 characters.
 
 **Check the usage:** in the Neon Console open the project; the **Overview** page
 has a **Usage** panel (compute, storage, network transfer this month). If you
@@ -156,10 +155,8 @@ In the [Discord Developer Portal](https://discord.com/developers/applications),
 open your application:
 
 1. **OAuth2 → Redirects:** add
-   `https://your-project.vercel.app/api/auth/discord/callback`. It never changes,
-   unlike a quick tunnel address.
-2. **General Information → Interactions Endpoint URL:** leave it empty. Remove an
-   old tunnel address if one is still there.
+   `https://your-project.vercel.app/api/auth/discord/callback`.
+2. **General Information → Interactions Endpoint URL:** leave it empty.
 3. If your server still shows `/bakufu` from earlier tests, remove it once from
    your PC (it asks for the server ID):
 

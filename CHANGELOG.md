@@ -71,7 +71,7 @@ Newest migration: `0030_trade_proposals.sql` (realm config v12).
   feed only when a new big pull appears). Game rules previews are hashed by
   PostgreSQL instead of downloading the realm. A new test keeps these budgets.
 - Free-tier warnings: the realm wizard and Grow the roster note that rosters
-  above about 2,000 characters use up free hosting (Vercel + Neon) faster; the
+  above about 5,000 characters use up free hosting (Vercel + Neon) faster; the
   Vercel + Neon guide explains every limit, how to check usage and what a paused
   database looks like; the "temporarily unavailable" page mentions monthly
   limits; `pnpm backup`/`restore` explain resource-limit errors (codes 53xxx).
@@ -97,6 +97,10 @@ Newest migration: `0030_trade_proposals.sql` (realm config v12).
 
 ### Removed
 
+- The Cloudflare quick tunnel test (`docs/deployment/public-test.md`,
+  `scripts/public-test.ps1`) and the tunnel-based Discord playtest guide. Host
+  with Docker and HTTPS (`docs/deployment/https.md`) or Vercel + Neon; Discord
+  commands are set up as in `docs/deployment/discord-gameplay.md`.
 - `docs/implementation-report.md` (a 3,500-line development log; it stays in the
   git history). What works is in `docs/implementation-status.md`.
 - "Add artwork to existing characters" and its `/api/realm-characters/artwork`
