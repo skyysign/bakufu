@@ -792,7 +792,14 @@ export async function exportPlayer(db: Database, actorId: string, realmId: strin
           ])
         ).rows[0].trade_code,
         tradingRules: config.trading,
-        trades: await tradeViews(tx, realmId, actorId, null),
+        // Archive v12 keeps its trade format; protocol and authorship are display hints.
+        trades: (await tradeViews(tx, realmId, actorId, null)).map(
+          ({ protocol: _protocol, changedByMe: _changedByMe, ...trade }) => {
+            void _protocol;
+            void _changedByMe;
+            return trade;
+          },
+        ),
         gems: member.balance,
         xp: member.xp,
         progression: { rules: config.progression, level: xpProgress(member.xp, config).level },

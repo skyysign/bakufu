@@ -217,9 +217,14 @@ export async function verifyCollectionExperience(
     expect(wishedValue.wishlistDemand).toBe(beforeWish.wishlistDemand + 1);
     expect(wishedValue.marketValue).toBeGreaterThan(beforeWish.marketValue);
     await showScreen(page, 'trades');
-    await page.getByText('Start a trade', { exact: true }).click();
-    await page.getByRole('button', { name: 'Browse your collection', exact: true }).click();
-    const tradePicker = page.getByRole('dialog', { name: 'Choose cards to trade', exact: true });
+    await page.getByRole('button', { name: 'New trade', exact: true }).click();
+    // Any valid trade ID opens both sides; the partner's own cards then fail to load.
+    await page
+      .getByLabel('Other player’s trade ID', { exact: true })
+      .fill('00000000-0000-4000-8000-000000000001');
+    const give = page.getByRole('region', { name: 'You give', exact: true });
+    await give.getByRole('button', { name: /^Choose cards/ }).click();
+    const tradePicker = page.getByRole('dialog', { name: 'Choose cards to give', exact: true });
     await assertTradingCardFaces(tradePicker.locator('.card-face'));
     await page.screenshot({ path: '.test-data/trade-card-picker-desktop.png' });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -233,17 +238,11 @@ export async function verifyCollectionExperience(
       await tradePicker.getByRole('button', { name: `Select ${card.name}`, exact: true }).click();
     }
     await tradePicker.getByRole('button', { name: 'Use 2 selected cards', exact: true }).click();
-    expect(
-      await page
-        .locator('input[type="hidden"][name="card"]')
-        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value).sort()),
-    ).toEqual(
-      owned
-        .slice(0, 2)
-        .map((card) => card.cardId)
-        .sort(),
-    );
-    await page.getByRole('button', { name: 'Browse your collection', exact: true }).click();
+    for (const card of owned.slice(0, 2))
+      await expect(
+        give.getByRole('button', { name: `Remove ${card.name}`, exact: true }),
+      ).toBeVisible();
+    await give.getByRole('button', { name: /^Choose cards/ }).click();
     await tradePicker.getByLabel('Search cards by name or series').fill(owned[0].name);
     await expect(
       tradePicker.getByRole('button', { name: `Select ${owned[0].name}`, exact: true }),

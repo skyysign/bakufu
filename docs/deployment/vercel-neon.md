@@ -6,8 +6,11 @@ Run Bakufu without your own computer on two free tiers: the website on
 The `/bakufu` slash commands are turned off on this setup, so everything happens
 on the website.
 
-> Status: prepared and covered by automated tests, but this repository has not
-> been deployed to Vercel yet. Expect small fixes on the first deploy.
+> **Free tiers have monthly limits.** Keep a realm under about **2,000
+> characters** here and check Neon's usage now and then; see
+> [How big can a realm get?](#how-big-can-a-realm-get) below. When a limit runs
+> out, Neon pauses the database until the next month and the site shows
+> "temporarily unavailable".
 
 ## What you get and what you give up
 
@@ -20,20 +23,69 @@ on the website.
 | Address | Permanent `your-project.vercel.app` | Your domain or tunnel |
 | First visit after a quiet period | 1–2 s slower while things wake up | Instant |
 
-Limits to know:
+Limits to know (free plans as of late 2026; check Neon's and Vercel's pricing
+pages, they change):
 
-- **Neon Free:** 1 GB of data per project. That's about 10 MB per 10,000
+- **Neon Free, network transfer: 5 GB per month.** Everything the database
+  sends to the website counts. This is the limit a busy realm hits first; see
+  the next section.
+- **Neon Free, compute: 100 CU-hours per month.** The database is awake while
+  anyone plays and sleeps after a few idle minutes. The live-pulls panel stops
+  checking for new pulls after 5 minutes without input, so an open tab doesn't
+  keep it awake.
+- **Neon Free, storage: 1 GB per project.** That's about 10 MB per 10,000
   characters and 5–6 KB per pack opening, so roughly 160,000 openings next to a
   10,000-character roster. Custom reveal sounds are the big items (about 2.5 MB
-  each). When the database is full Neon doesn't charge you; actions that add
-  data fail until you free space or upgrade. Compute time is limited too, and the
-  database sleeps after a few idle minutes; the live-pulls panel stops checking
-  for new pulls after 5 minutes without input so an open tab doesn't keep it
-  awake.
+  each). When the database is full, actions that add data fail until you free
+  space or upgrade.
+- When transfer or compute runs out, Neon **pauses the database until the next
+  billing month** (or until you upgrade). Nothing is deleted; the site shows
+  "temporarily unavailable" and backups fail with code 53000 meanwhile.
 - **Vercel Hobby:** a request body can be at most 4.5 MB. The browser
   gzip-compresses large uploads (rosters and sounds), which fits far bigger
   rosters than before; the server applies the same size cap after unpacking. A
   request may run for up to 60 seconds, which large realm creation can need.
+
+## How big can a realm get?
+
+Each web server keeps a copy of the realm's roster and asks the database only
+whether it changed (a 32-byte fingerprint), so ordinary requests stay small no
+matter how big the roster is. Measured for a 3,000-character realm
+(`tests/integration/transfer-budget.test.ts`):
+
+| What happens | Database transfer |
+| --- | --- |
+| A page view, also after every action (open, recycle, trade, …) | about 20–70 KB: 1 byte per roster character, about 100 bytes per card the player owns, plus the realm's settings |
+| A pack opening, even 10 packs | about 13 KB |
+| Live pulls check (every 15 s while someone is on Packs) | a few hundred bytes; about 13 KB when a new big pull appears |
+| A **new server instance** or a **roster change** (import, Grow the roster, tagging, rarity edits, removals) | the **whole roster once**: about 0.5 KB per character, so 1 MB for 2,000 and 2.5 MB for 5,000 |
+| A backup from your PC | the whole database |
+
+Vercel starts new server instances whenever it likes (after quiet periods, under
+load, after each deploy), and each one downloads the whole roster on its first
+request. That is what makes big rosters expensive on the free plan.
+
+Rough guidance for the 5 GB Neon Free transfer:
+
+| Roster | On Vercel + Neon Free |
+| --- | --- |
+| up to about 2,000 characters | comfortable for a small community (around 20 players playing about an hour a day) |
+| 2,000–5,000 | works, but watch the usage and avoid many roster changes per day |
+| more than 5,000 | use a paid Neon plan or self-host with Docker (no transfer limit) |
+
+These are estimates, not promises: how often Vercel starts instances and how
+much people play matter more than anything else. The realm wizard and **Grow the
+roster** show a note above 2,000 characters.
+
+**Check the usage:** in the Neon Console open the project; the **Overview** page
+has a **Usage** panel (compute, storage, network transfer this month). If you
+created the database through Vercel (**Storage → Neon**), open it from Vercel's
+**Storage** tab.
+
+Versions before the roster cache ("Database transfer" in `CHANGELOG.md`), every
+page view downloaded the whole roster (about 1.4 MB for 3,000 characters) and
+the live-pulls panel about 330 KB every 15 seconds, which used up 5 GB within
+weeks. Update if you run an older version.
 
 ## What you need
 
@@ -193,5 +245,10 @@ Restoring works like step 2 into a fresh, empty Neon database.
 - **"SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca'…"**
   when running commands: harmless, the connection is already fully verified. To
   silence it, change `sslmode=require` to `sslmode=verify-full` in the string.
+- **"Bakufu is temporarily unavailable", and backups fail with code 53000:**
+  a Neon monthly limit (usually network transfer) is used up and the database
+  is paused. Check **Usage** on the Neon project's Overview page. It comes back
+  at the start of the next billing month, or right away on a paid plan; nothing
+  is lost. See [How big can a realm get?](#how-big-can-a-realm-get).
 - **Backup or migrate fails:** the message names the cause. "No Bakufu tables
   yet" means the database was never set up: run the step 2 `db:migrate` command.

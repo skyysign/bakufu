@@ -39,6 +39,7 @@ import { requireExpectedRevision } from './settings-revision';
 import { tradeViews } from './trade-state';
 import { admissionPolicy, type AdmissionPolicy } from './admission';
 import { prepareRealmCatalog } from './catalog';
+import { realmRoster } from './roster-cache';
 import {
   memberProfiles,
   ownDiscordProfile,
@@ -214,19 +215,18 @@ export async function eligiblePool(
   realmId: string,
   category: string | null,
 ): Promise<Character[]> {
-  const rows = (
-    await tx.query(
-      `SELECT c.id,c.source_key AS "sourceKey",c.name,c.series,c.categories,c.tier,c.provenance->'artwork' AS artwork FROM characters c
-    WHERE c.realm_id=$1 AND c.retired_at IS NULL AND ($2::text IS NULL OR $2=ANY(c.categories))
-    AND NOT EXISTS(SELECT 1 FROM cards owned WHERE owned.realm_id=c.realm_id AND owned.character_id=c.id AND owned.recycled_at IS NULL)
-    ORDER BY c.id`,
-      [realmId, category],
+  // Unclaimed, active characters of the category in `ORDER BY id`. The roster
+  // cache verifies its copy against the database inside this transaction, and
+  // ownership is read fresh, so this is exactly the committed pool.
+  const roster = await realmRoster(tx, realmId, { claims: true });
+  return roster.entries
+    .filter(
+      (entry, index) =>
+        !entry.retired &&
+        !roster.claimed[index] &&
+        (category === null || entry.character.categories.includes(category)),
     )
-  ).rows;
-  return rows.map(({ artwork, ...character }) => ({
-    ...character,
-    ...(artwork ? { artwork } : {}),
-  })) as Character[];
+    .map((entry) => entry.character);
 }
 
 export async function openPack(
@@ -485,18 +485,33 @@ export async function getRealmView(
         member.xp,
         member.balance,
       );
-      const catalog = (
+      // Characters come from the roster cache (verified against the database in
+      // this transaction); only ownership and the player's own cards are read.
+      const roster = await realmRoster(tx, realmId, { claims: true });
+      const owned = (
         await tx.query(
-          `SELECT c.id,c.source_key AS "sourceKey",c.name,c.series,c.categories,c.tier,c.provenance->'artwork' AS artwork,
-        CASE WHEN owned.owner_id=$2 THEN 'yours' WHEN owned.id IS NOT NULL THEN 'claimed' ELSE 'available' END AS status
-        FROM characters c LEFT JOIN cards owned ON owned.realm_id=c.realm_id AND owned.character_id=c.id AND owned.recycled_at IS NULL
-        WHERE c.realm_id=$1 AND c.retired_at IS NULL ORDER BY c.name,c.id`,
+          `SELECT owned.character_id AS "characterId",owned.id AS "cardId",owned.acquired_at AS "acquiredAt",
+      EXISTS(SELECT 1 FROM trade_cards r JOIN trades t ON t.realm_id=r.realm_id AND t.id=r.trade_id WHERE r.realm_id=owned.realm_id AND r.card_id=owned.id AND r.released_at IS NULL AND t.status='pending' AND t.expires_at>clock_timestamp()) OR ${realm.config.schemaVersion >= 7 ? "EXISTS(SELECT 1 FROM market_listings ml WHERE ml.realm_id=owned.realm_id AND ml.card_id=owned.id AND ml.status='active')" : 'false'} AS "lockedForTrade",
+      ${realm.config.schemaVersion >= 7 ? "EXISTS(SELECT 1 FROM market_listings ml WHERE ml.realm_id=owned.realm_id AND ml.card_id=owned.id AND ml.status='active')" : 'false'} AS "listedForSale" FROM cards owned
+      WHERE owned.realm_id=$1 AND owned.owner_id=$2 AND owned.recycled_at IS NULL ORDER BY owned.acquired_at DESC,owned.id`,
           [realmId, actorId],
         )
-      ).rows.map(({ artwork, ...character }) => ({
-        ...character,
-        ...(artwork ? { artwork } : {}),
-      })) as RealmView['catalog'];
+      ).rows as {
+        characterId: string;
+        cardId: string;
+        acquiredAt: Date;
+        lockedForTrade: boolean;
+        listedForSale: boolean;
+      }[];
+      const mine = new Set(owned.map((card) => card.characterId));
+      const catalog = roster.entries
+        .map((entry, index) => ({ entry, claimed: roster.claimed[index] }))
+        .filter(({ entry }) => !entry.retired)
+        .sort((a, b) => a.entry.nameOrder - b.entry.nameOrder)
+        .map(({ entry, claimed }) => ({
+          ...entry.character,
+          status: mine.has(entry.character.id) ? 'yours' : claimed ? 'claimed' : 'available',
+        })) as RealmView['catalog'];
       const packGrouping = catalogPackGrouping(catalog);
       const packs = [];
       const featuredPool = new Map<string, Character>();
@@ -541,20 +556,19 @@ export async function getRealmView(
           spotlights: selectPackSpotlights(pool, config, 3),
         });
       }
-      const cards = (
-        await tx.query(
-          `SELECT c.id,c.source_key AS "sourceKey",c.name,c.series,c.categories,c.tier,c.provenance->'artwork' AS artwork,
-      owned.id AS "cardId",owned.acquired_at AS "acquiredAt",
-      EXISTS(SELECT 1 FROM trade_cards r JOIN trades t ON t.realm_id=r.realm_id AND t.id=r.trade_id WHERE r.realm_id=owned.realm_id AND r.card_id=owned.id AND r.released_at IS NULL AND t.status='pending' AND t.expires_at>clock_timestamp()) OR ${realm.config.schemaVersion >= 7 ? "EXISTS(SELECT 1 FROM market_listings ml WHERE ml.realm_id=owned.realm_id AND ml.card_id=owned.id AND ml.status='active')" : 'false'} AS "lockedForTrade",
-      ${realm.config.schemaVersion >= 7 ? "EXISTS(SELECT 1 FROM market_listings ml WHERE ml.realm_id=owned.realm_id AND ml.card_id=owned.id AND ml.status='active')" : 'false'} AS "listedForSale" FROM cards owned JOIN characters c
-      ON c.realm_id=owned.realm_id AND c.id=owned.character_id WHERE owned.realm_id=$1 AND owned.owner_id=$2 AND owned.recycled_at IS NULL ORDER BY owned.acquired_at DESC,owned.id`,
-          [realmId, actorId],
-        )
-      ).rows.map(({ artwork, ...row }) => ({
-        ...row,
-        ...(artwork ? { artwork } : {}),
-        acquiredAt: row.acquiredAt.toISOString(),
-      })) as RealmView['cards'];
+      const cards = owned.map(
+        ({ characterId, cardId, acquiredAt, lockedForTrade, listedForSale }) => {
+          const { artwork, ...character } = roster.byId.get(characterId)!.character;
+          return {
+            ...character,
+            cardId,
+            acquiredAt: acquiredAt.toISOString(),
+            lockedForTrade,
+            listedForSale,
+            ...(artwork ? { artwork } : {}),
+          };
+        },
+      ) as RealmView['cards'];
       const last = (
         await tx.query(
           'SELECT result FROM openings WHERE realm_id=$1 AND account_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1',
@@ -576,7 +590,13 @@ export async function getRealmView(
         configRevision: realm.config_revision,
         tierSounds: await tierSoundsForRealm(tx, realmId),
         characterSounds: await characterSoundsForRealm(tx, realmId),
-        characterValues: await characterValuesForRealm(tx, realmId, config, effectiveConfig),
+        characterValues: await characterValuesForRealm(
+          tx,
+          realmId,
+          config,
+          effectiveConfig,
+          roster,
+        ),
         discordGuildId:
           member.role === 'admin'
             ? ((

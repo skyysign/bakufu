@@ -317,3 +317,15 @@ section.pack-reveal.opening-room-stage {
   text-align: center;
   margin: 0 0 16px;
 }
+
+/* A single-pack result keeps nearly the size the card had during the reveal,
+   a little smaller so the recycle button fits below it. */
+.cinematic-reveal .reveal-gallery.reveal-gallery-single,
+.opening-room-stage .reveal-gallery.reveal-gallery-single {
+  max-width: none;
+}
+.cinematic-reveal .reveal-gallery.reveal-gallery-single .reveal-card,
+.opening-room-stage .reveal-gallery.reveal-gallery-single .reveal-card {
+  width: clamp(220px, 28svh, 330px);
+  max-width: calc(100vw - 70px);
+}

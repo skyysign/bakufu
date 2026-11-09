@@ -59,23 +59,33 @@ export async function recentPulls(
     db,
     async (tx) => {
       await requireMember(tx, realmId, actorId);
+      // Only the notable cards leave the database, newest first: the latest
+      // openings that contain one, then their wanted cards, last reveal first.
+      // (Whole receipts of 10-pack openings were the bulk of each 15-second poll.)
       const rows = (
         await tx.query(
-          `SELECT o.id,o.created_at,o.account_id=$2 AS mine,pk.name AS pack_name,
-          o.result->'characters' AS characters,p.username,p.display_name,
-          to_jsonb(p)->>'avatar_url' AS avatar_url
-          FROM openings o
-          LEFT JOIN packs pk ON pk.realm_id=o.realm_id AND pk.id=o.pack_id
-          LEFT JOIN discord_profiles p ON p.account_id=o.account_id
-          WHERE o.realm_id=$1 AND o.result->>'ok'='true'
-          AND EXISTS(SELECT 1 FROM jsonb_array_elements(o.result->'characters') c WHERE c->>'tier'=ANY($4::text[]))
-          ORDER BY o.created_at DESC,o.id DESC LIMIT $3`,
+          `SELECT o.id,o.created_at,o.mine,o.pack_name,o.username,o.display_name,o.avatar_url,
+          e.value AS character,(e.ordinality-1)::int AS index
+          FROM (
+            SELECT o.id,o.created_at,o.account_id=$2 AS mine,pk.name AS pack_name,
+            o.result->'characters' AS characters,p.username,p.display_name,
+            to_jsonb(p)->>'avatar_url' AS avatar_url
+            FROM openings o
+            LEFT JOIN packs pk ON pk.realm_id=o.realm_id AND pk.id=o.pack_id
+            LEFT JOIN discord_profiles p ON p.account_id=o.account_id
+            WHERE o.realm_id=$1 AND o.result->>'ok'='true'
+            AND EXISTS(SELECT 1 FROM jsonb_array_elements(o.result->'characters') c WHERE c->>'tier'=ANY($4::text[]))
+            ORDER BY o.created_at DESC,o.id DESC LIMIT $3
+          ) o
+          CROSS JOIN LATERAL jsonb_array_elements(o.characters) WITH ORDINALITY e(value,ordinality)
+          WHERE e.value->>'tier'=ANY($4::text[])
+          ORDER BY o.created_at DESC,o.id DESC,e.ordinality DESC LIMIT $3`,
           [realmId, actorId, cards, wanted],
         )
       ).rows;
       const pulls: PulledCard[] = [];
       for (const row of rows) {
-        const awarded = (Array.isArray(row.characters) ? row.characters : []) as {
+        const character = row.character as {
           id: string;
           sourceKey: string;
           name: string;
@@ -83,35 +93,29 @@ export async function recentPulls(
           categories?: string[];
           tier: Tier;
           artwork?: Record<string, unknown>;
-        }[];
-        // Within one opening the last card is the most recent reveal.
-        [...awarded].reverse().forEach((character, reversed) => {
-          if (!wanted.includes(character.tier)) return;
-          const index = awarded.length - 1 - reversed;
-          pulls.push({
-            key: `${row.id}:${index}`,
-            openingId: row.id,
-            characterId: character.id,
-            sourceKey: character.sourceKey,
-            name: character.name,
-            series: character.series,
-            categories: character.categories ?? [],
-            tier: character.tier,
-            ...(character.artwork ? { artwork: character.artwork } : {}),
-            packName: row.pack_name ?? 'A pack',
-            pulledAt: (row.created_at as Date).toISOString(),
-            collector: row.username
-              ? {
-                  name: row.display_name ?? row.username,
-                  username: row.username,
-                  ...(row.avatar_url ? { avatarUrl: row.avatar_url } : {}),
-                }
-              : null,
-            mine: row.mine,
-            status: 'available',
-          });
+        };
+        pulls.push({
+          key: `${row.id}:${row.index}`,
+          openingId: row.id,
+          characterId: character.id,
+          sourceKey: character.sourceKey,
+          name: character.name,
+          series: character.series,
+          categories: character.categories ?? [],
+          tier: character.tier,
+          ...(character.artwork ? { artwork: character.artwork } : {}),
+          packName: row.pack_name ?? 'A pack',
+          pulledAt: (row.created_at as Date).toISOString(),
+          collector: row.username
+            ? {
+                name: row.display_name ?? row.username,
+                username: row.username,
+                ...(row.avatar_url ? { avatarUrl: row.avatar_url } : {}),
+              }
+            : null,
+          mine: row.mine,
+          status: 'available',
         });
-        if (pulls.length >= cards) break;
       }
       const shown = pulls.slice(0, cards);
       if (!shown.length) return { pulls: shown };
@@ -146,6 +150,42 @@ export async function recentPulls(
           };
         }),
       };
+    },
+    true,
+  );
+}
+
+/**
+ * True when the realm has a notable pull newer than `after` (the newest
+ * opening ID the feed already shows). Members only. The Packs page polls this
+ * every 15 seconds and downloads the feed only when it changed, so an idle
+ * feed moves a few hundred bytes instead of the whole feed.
+ */
+export async function pullFeedChanged(
+  db: Database,
+  actorId: string,
+  realmId: string,
+  after: string,
+  options: { tiers?: readonly Tier[] } = {},
+): Promise<boolean> {
+  [actorId, realmId, after].forEach((value) => z.uuid().parse(value));
+  const wanted = z
+    .array(z.enum(tiers))
+    .min(1)
+    .parse(options.tiers ?? notablePullTiers);
+  return transaction(
+    db,
+    async (tx) => {
+      await requireMember(tx, realmId, actorId);
+      const newest = (
+        await tx.query(
+          `SELECT o.id FROM openings o WHERE o.realm_id=$1 AND o.result->>'ok'='true'
+          AND EXISTS(SELECT 1 FROM jsonb_array_elements(o.result->'characters') c WHERE c->>'tier'=ANY($2::text[]))
+          ORDER BY o.created_at DESC,o.id DESC LIMIT 1`,
+          [realmId, wanted],
+        )
+      ).rows[0] as { id: string } | undefined;
+      return newest?.id !== after;
     },
     true,
   );

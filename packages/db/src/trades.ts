@@ -16,18 +16,35 @@ import { transaction, type Database, type Transaction } from './connection';
 import { requireMember } from './game';
 import { requireExpectedRevision } from './settings-revision';
 import { releaseExpiredTrades } from './trade-state';
+import { characterValuesForRealm } from './character-values';
 
+/*
+ * Trades. Protocol 1 (trades created before proposals): each player edits only
+ * their own side and both confirm. Protocol 2 (every new trade): a version
+ * holds both sides, whoever writes it (create or counter-offer) confirms it at
+ * once, and the other player accepts, counters or declines. A player's cards
+ * are reserved only while that player has confirmed the current version, so
+ * asking for someone's card never locks it.
+ */
 const offerSchema = z.strictObject({
   cardIds: z.array(z.uuid()).max(10),
   gems: z.number().int().min(0).max(1_000_000),
 });
 const commandSchema = z.discriminatedUnion('action', [
-  z.strictObject({ action: z.literal('create'), counterpartyCode: z.uuid(), offer: offerSchema }),
+  z.strictObject({
+    action: z.literal('create'),
+    counterpartyCode: z.uuid(),
+    offer: offerSchema,
+    /** What the creator asks for from the other player (protocol 2). */
+    request: offerSchema.optional(),
+  }),
   z.strictObject({
     action: z.literal('edit'),
     tradeId: z.uuid(),
     version: z.number().int().positive(),
     offer: offerSchema,
+    /** The other player's side of a counter-offer (protocol 2). */
+    request: offerSchema.optional(),
   }),
   z.strictObject({
     action: z.enum(['confirm', 'cancel']),
@@ -35,6 +52,9 @@ const commandSchema = z.discriminatedUnion('action', [
     version: z.number().int().positive(),
   }),
 ]);
+const emptyOffer: TradeOffer = { cardIds: [], gems: 0 };
+const sameOffer = (a: TradeOffer, b: TradeOffer) => JSON.stringify(a) === JSON.stringify(b);
+
 async function availableCards(
   tx: Transaction,
   realmId: string,
@@ -85,6 +105,47 @@ async function availableCards(
     );
   return rows;
 }
+/** The other player's requested cards must still be theirs and free to trade. */
+async function requestedCards(
+  tx: Transaction,
+  realmId: string,
+  ownerId: string,
+  ids: string[],
+  tradeId?: string,
+) {
+  if (!ids.length) return;
+  const owned = (
+    await tx.query(
+      'SELECT count(*)::int AS count FROM cards WHERE realm_id=$1 AND id=ANY($2::uuid[]) AND owner_id=$3 AND recycled_at IS NULL',
+      [realmId, ids, ownerId],
+    )
+  ).rows[0].count;
+  if (owned !== ids.length)
+    throw new GameError(
+      'CARD_UNAVAILABLE',
+      'One of the requested cards is no longer in their collection.',
+      409,
+    );
+  const locked =
+    (
+      await tx.query(
+        "SELECT 1 FROM market_listings WHERE realm_id=$1 AND card_id=ANY($2::uuid[]) AND status='active' LIMIT 1",
+        [realmId, ids],
+      )
+    ).rowCount ||
+    (
+      await tx.query(
+        'SELECT 1 FROM trade_cards WHERE realm_id=$1 AND card_id=ANY($2::uuid[]) AND released_at IS NULL AND ($3::uuid IS NULL OR trade_id!=$3) LIMIT 1',
+        [realmId, ids, tradeId ?? null],
+      )
+    ).rowCount;
+  if (locked)
+    throw new GameError(
+      'CARD_LOCKED',
+      'A requested card is listed on the market or reserved in another trade.',
+      409,
+    );
+}
 async function reserve(
   tx: Transaction,
   realmId: string,
@@ -98,6 +159,31 @@ async function reserve(
       'INSERT INTO trade_cards(realm_id,trade_id,offer_version,card_id,account_id) VALUES($1,$2,$3,$4,$5)',
       [realmId, tradeId, version, id, actorId],
     );
+}
+async function release(
+  tx: Transaction,
+  realmId: string,
+  tradeId: string,
+  accountId: string,
+  now: Date,
+) {
+  await tx.query(
+    'UPDATE trade_cards SET released_at=$4 WHERE realm_id=$1 AND trade_id=$2 AND account_id=$3 AND released_at IS NULL',
+    [realmId, tradeId, accountId, now],
+  );
+}
+async function confirm(
+  tx: Transaction,
+  realmId: string,
+  tradeId: string,
+  version: number,
+  accountId: string,
+  now: Date,
+) {
+  await tx.query(
+    'INSERT INTO trade_confirmations(realm_id,trade_id,version,account_id,created_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
+    [realmId, tradeId, version, accountId, now],
+  );
 }
 async function transferCards(
   tx: Transaction,
@@ -131,6 +217,58 @@ async function transferCards(
     );
   }
 }
+/** Moves cards and gems once both players confirmed the same version. */
+async function complete(
+  tx: Transaction,
+  realmId: string,
+  trade: { id: string; creator_id: string; counterparty_id: string },
+  a: TradeOffer,
+  b: TradeOffer,
+  balances: ReturnType<typeof tradeBalances>,
+  now: Date,
+) {
+  await transferCards(
+    tx,
+    realmId,
+    trade.id,
+    trade.creator_id,
+    trade.counterparty_id,
+    a.cardIds,
+    now,
+  );
+  await transferCards(
+    tx,
+    realmId,
+    trade.id,
+    trade.counterparty_id,
+    trade.creator_id,
+    b.cardIds,
+    now,
+  );
+  for (const [id, balance, amount] of [
+    [trade.creator_id, balances.aAfter, balances.aDelta],
+    [trade.counterparty_id, balances.bAfter, balances.bDelta],
+  ] as [string, number, number][]) {
+    await tx.query('UPDATE memberships SET balance=$3 WHERE realm_id=$1 AND account_id=$2', [
+      realmId,
+      id,
+      balance,
+    ]);
+    await tx.query(
+      "INSERT INTO wallet_ledger(realm_id,id,account_id,operation_key,amount,balance_after,reason,created_at) VALUES($1,$2,$3,$4,$5,$6,'trade',$7)",
+      [realmId, randomUUID(), id, `trade:${trade.id}`, amount, balance, now],
+    );
+  }
+  await tx.query(
+    "UPDATE trades SET status='completed',completed_at=$3,updated_at=$3 WHERE realm_id=$1 AND id=$2",
+    [realmId, trade.id, now],
+  );
+  await tx.query(
+    'UPDATE trade_cards SET released_at=$3 WHERE realm_id=$1 AND trade_id=$2 AND released_at IS NULL',
+    [realmId, trade.id, now],
+  );
+}
+
 export async function tradeCommand(
   db: Database,
   actorId: string,
@@ -142,6 +280,7 @@ export async function tradeCommand(
   [actorId, realmId, requestKey].forEach((value) => z.uuid().parse(value));
   const command = commandSchema.parse(input);
   if ('offer' in command) command.offer.cardIds.sort();
+  if ('request' in command && command.request) command.request.cardIds.sort();
   const fingerprint = createHash('sha256').update(JSON.stringify(command)).digest('hex');
   return transaction(db, async (tx) => {
     const realm = (await tx.query('SELECT config FROM realms WHERE id=$1 FOR UPDATE', [realmId]))
@@ -197,14 +336,19 @@ export async function tradeCommand(
             409,
           );
       }
-      validateTradePair(command.offer, { cardIds: [], gems: 0 }, rules);
+      // A create that names the other player's side is a proposal (protocol 2);
+      // without it the trade keeps the original one-side-at-a-time protocol.
+      const proposals = command.request !== undefined,
+        request = command.request ?? emptyOffer;
+      validateTradePair(command.offer, request, rules);
       if (actor.balance < command.offer.gems)
         throw new GameError('INSUFFICIENT_GEMS', 'You do not have the offered gems.', 409);
       await availableCards(tx, realmId, actorId, command.offer.cardIds);
+      await requestedCards(tx, realmId, recipient.account_id, request.cardIds);
       tradeId = randomUUID();
       version = 1;
       await tx.query(
-        "INSERT INTO trades(realm_id,id,creator_id,counterparty_id,status,offer_version,config_snapshot,created_at,updated_at,expires_at) VALUES($1,$2,$3,$4,'pending',1,$5,$6,$6,$7)",
+        "INSERT INTO trades(realm_id,id,creator_id,counterparty_id,status,offer_version,config_snapshot,created_at,updated_at,expires_at,protocol) VALUES($1,$2,$3,$4,'pending',1,$5,$6,$6,$7,$8)",
         [
           realmId,
           tradeId,
@@ -213,13 +357,18 @@ export async function tradeCommand(
           config,
           now,
           new Date(now.getTime() + rules.expiresAfterMinutes * 60_000),
+          proposals ? 2 : 1,
         ],
       );
       await tx.query(
         'INSERT INTO trade_versions(realm_id,trade_id,version,changed_by,creator_offer,counterparty_offer,created_at) VALUES($1,$2,1,$3,$4,$5,$6)',
-        [realmId, tradeId, actorId, command.offer, { cardIds: [], gems: 0 }, now],
+        [realmId, tradeId, actorId, command.offer, request, now],
       );
       await reserve(tx, realmId, tradeId, 1, actorId, command.offer.cardIds);
+      if (proposals) {
+        await confirm(tx, realmId, tradeId, 1, actorId, now);
+        message = 'Offer sent. It completes when the other player accepts.';
+      }
     } else {
       const trade = (
         await tx.query(
@@ -233,6 +382,8 @@ export async function tradeCommand(
       version = trade.offer_version;
       const rules: TradeRules = parseRealmConfig(trade.config_snapshot).trading;
       const creator = trade.creator_id === actorId;
+      const otherId: string = creator ? trade.counterparty_id : trade.creator_id;
+      const proposals = trade.protocol === 2;
       const a = trade.creator_offer as TradeOffer,
         b = trade.counterparty_offer as TradeOffer;
       if (command.action === 'cancel') {
@@ -247,11 +398,21 @@ export async function tradeCommand(
           [realmId, tradeId, now],
         );
       } else if (command.action === 'edit') {
-        validateTradePair(creator ? command.offer : a, creator ? b : command.offer, rules);
-        if (actor.balance < command.offer.gems)
+        if (!proposals && command.request)
+          throw new GameError(
+            'TRADE_PROTOCOL',
+            'This older trade can only change your own side. Cancel it and send a new offer.',
+            409,
+          );
+        const mine = command.offer,
+          theirs = command.request ?? (creator ? b : a);
+        validateTradePair(creator ? mine : theirs, creator ? theirs : mine, rules);
+        if (actor.balance < mine.gems)
           throw new GameError('INSUFFICIENT_GEMS', 'You do not have the offered gems.', 409);
-        await availableCards(tx, realmId, actorId, command.offer.cardIds, tradeId);
-        if (JSON.stringify(command.offer) !== JSON.stringify(creator ? a : b)) {
+        await availableCards(tx, realmId, actorId, mine.cardIds, tradeId);
+        if (proposals) await requestedCards(tx, realmId, otherId, theirs.cardIds, tradeId);
+        const theirsChanged = !sameOffer(theirs, creator ? b : a);
+        if (!sameOffer(mine, creator ? a : b) || theirsChanged) {
           if (version >= 2_147_483_647)
             throw new GameError('TRADE_LIMIT', 'The offer version limit has been reached.', 409);
           version++;
@@ -262,16 +423,20 @@ export async function tradeCommand(
               tradeId,
               version,
               actorId,
-              creator ? command.offer : a,
-              creator ? b : command.offer,
+              creator ? mine : theirs,
+              creator ? theirs : mine,
               now,
             ],
           );
-          await tx.query(
-            'UPDATE trade_cards SET released_at=$4 WHERE realm_id=$1 AND trade_id=$2 AND account_id=$3 AND released_at IS NULL',
-            [realmId, tradeId, actorId, now],
-          );
-          await reserve(tx, realmId, tradeId, version, actorId, command.offer.cardIds);
+          await release(tx, realmId, tradeId, actorId, now);
+          await reserve(tx, realmId, tradeId, version, actorId, mine.cardIds);
+          if (proposals) {
+            // A counter-offer is confirmed by its author; the other player's
+            // cards are free again until they accept the new version.
+            await release(tx, realmId, tradeId, otherId, now);
+            await confirm(tx, realmId, tradeId, version, actorId, now);
+            message = 'Counter-offer sent. It completes when the other player accepts.';
+          }
           await tx.query(
             'UPDATE trades SET offer_version=$3,updated_at=$4 WHERE realm_id=$1 AND id=$2',
             [realmId, tradeId, version, now],
@@ -282,12 +447,19 @@ export async function tradeCommand(
         const memberA = await requireMember(tx, realmId, trade.creator_id),
           memberB = await requireMember(tx, realmId, trade.counterparty_id);
         const balances = tradeBalances(memberA.balance, memberB.balance, a, b);
-        await availableCards(tx, realmId, trade.creator_id, a.cardIds, tradeId, true);
-        await availableCards(tx, realmId, trade.counterparty_id, b.cardIds, tradeId, true);
-        await tx.query(
-          'INSERT INTO trade_confirmations(realm_id,trade_id,version,account_id,created_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
-          [realmId, tradeId, version, actorId, now],
-        );
+        if (proposals) {
+          // Accepting reserves the accepting player's side of this version.
+          const mine = creator ? a : b,
+            theirs = creator ? b : a;
+          await availableCards(tx, realmId, actorId, mine.cardIds, tradeId);
+          await requestedCards(tx, realmId, otherId, theirs.cardIds, tradeId);
+          await release(tx, realmId, tradeId, actorId, now);
+          await reserve(tx, realmId, tradeId, version, actorId, mine.cardIds);
+        } else {
+          await availableCards(tx, realmId, trade.creator_id, a.cardIds, tradeId, true);
+          await availableCards(tx, realmId, trade.counterparty_id, b.cardIds, tradeId, true);
+        }
+        await confirm(tx, realmId, tradeId, version, actorId, now);
         const count = (
           await tx.query(
             'SELECT count(*)::integer AS count FROM trade_confirmations WHERE realm_id=$1 AND trade_id=$2 AND version=$3',
@@ -296,45 +468,7 @@ export async function tradeCommand(
         ).rows[0].count;
         message = 'Your confirmation is saved. Waiting for the other player.';
         if (count === 2) {
-          await transferCards(
-            tx,
-            realmId,
-            tradeId,
-            trade.creator_id,
-            trade.counterparty_id,
-            a.cardIds,
-            now,
-          );
-          await transferCards(
-            tx,
-            realmId,
-            tradeId,
-            trade.counterparty_id,
-            trade.creator_id,
-            b.cardIds,
-            now,
-          );
-          for (const [id, balance, amount] of [
-            [trade.creator_id, balances.aAfter, balances.aDelta],
-            [trade.counterparty_id, balances.bAfter, balances.bDelta],
-          ] as [string, number, number][]) {
-            await tx.query(
-              'UPDATE memberships SET balance=$3 WHERE realm_id=$1 AND account_id=$2',
-              [realmId, id, balance],
-            );
-            await tx.query(
-              "INSERT INTO wallet_ledger(realm_id,id,account_id,operation_key,amount,balance_after,reason,created_at) VALUES($1,$2,$3,$4,$5,$6,'trade',$7)",
-              [realmId, randomUUID(), id, `trade:${tradeId}`, amount, balance, now],
-            );
-          }
-          await tx.query(
-            "UPDATE trades SET status='completed',completed_at=$3,updated_at=$3 WHERE realm_id=$1 AND id=$2",
-            [realmId, tradeId, now],
-          );
-          await tx.query(
-            'UPDATE trade_cards SET released_at=$3 WHERE realm_id=$1 AND trade_id=$2 AND released_at IS NULL',
-            [realmId, tradeId, now],
-          );
+          await complete(tx, realmId, trade, a, b, balances, now);
           status = 'completed';
           message = 'Trade completed. Cards and gems transferred.';
         }
@@ -347,4 +481,62 @@ export async function tradeCommand(
     );
     return result;
   });
+}
+
+/** A trade partner's cards and their state, for choosing what to ask for. */
+export async function tradePartnerCards(
+  db: Database,
+  actorId: string,
+  realmId: string,
+  tradeCode: string,
+) {
+  [actorId, realmId, tradeCode].forEach((value) => z.uuid().parse(value));
+  return transaction(
+    db,
+    async (tx) => {
+      await requireMember(tx, realmId, actorId);
+      const config = parseRealmConfig(
+        (await tx.query('SELECT config FROM realms WHERE id=$1', [realmId])).rows[0].config,
+      );
+      const values = config.characterValues.enabled
+        ? await characterValuesForRealm(tx, realmId, config)
+        : {};
+      const partner = (
+        await tx.query(
+          `SELECT m.account_id,m.trade_code AS "tradeCode",p.username,p.display_name AS "displayName"
+          FROM memberships m LEFT JOIN discord_profiles p ON p.account_id=m.account_id
+          WHERE m.realm_id=$1 AND m.trade_code=$2`,
+          [realmId, tradeCode],
+        )
+      ).rows[0];
+      if (!partner || partner.account_id === actorId)
+        throw new GameError('INVALID_PARTNER', 'Choose another player from this realm.', 404);
+      const cards = (
+        await tx.query(
+          `SELECT c.id,c.source_key AS "sourceKey",c.name,c.series,c.categories,c.tier,c.provenance->'artwork' AS artwork,
+          owned.id AS "cardId",
+          EXISTS(SELECT 1 FROM trade_cards r JOIN trades t ON t.realm_id=r.realm_id AND t.id=r.trade_id
+            WHERE r.realm_id=owned.realm_id AND r.card_id=owned.id AND r.released_at IS NULL AND t.status='pending' AND t.expires_at>clock_timestamp()) AS "lockedForTrade",
+          EXISTS(SELECT 1 FROM market_listings ml WHERE ml.realm_id=owned.realm_id AND ml.card_id=owned.id AND ml.status='active') AS "listedForSale"
+          FROM cards owned JOIN characters c ON c.realm_id=owned.realm_id AND c.id=owned.character_id
+          WHERE owned.realm_id=$1 AND owned.owner_id=$2 AND owned.recycled_at IS NULL
+          ORDER BY c.name,owned.id`,
+          [realmId, partner.account_id],
+        )
+      ).rows.map(({ artwork, ...row }) => ({
+        ...row,
+        ...(artwork ? { artwork } : {}),
+        ...(values[row.id] ? { valuation: values[row.id] } : {}),
+      }));
+      return {
+        partner: {
+          tradeCode: partner.tradeCode as string,
+          username: (partner.username as string | null) ?? null,
+          displayName: (partner.displayName as string | null) ?? null,
+        },
+        cards,
+      };
+    },
+    true,
+  );
 }

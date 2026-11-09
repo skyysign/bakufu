@@ -76,12 +76,12 @@ describe('AniList selected-series boundary', () => {
         {
           id: work.id,
           title: 'Original AniList Academy',
-          categories: ['2010s', 'Action', 'Fantasy', 'Shounen'],
+          categories: ['2010s', 'Action', 'Anime', 'Fantasy', 'Shounen'],
         },
         {
           id: work.id + 1,
           title: 'Original Quiet Library',
-          categories: ['1990s', 'Slice of Life'],
+          categories: ['1990s', 'Anime', 'Slice of Life'],
         },
       ],
     });

@@ -24,6 +24,12 @@ export function backupFailureReason(error: unknown): string {
     return 'The database has no Bakufu tables yet, or its version does not match this image. Set it up or update it with `pnpm db:migrate` using this image first.';
   if (code === '28P01' || code === '28000')
     return 'The database refused the login. Check the user name and password in DATABASE_URL.';
+  if (code === '53100')
+    return 'The database is full (its storage limit is reached). Free space or raise the limit, then try again.';
+  if (code === '53300')
+    return 'The database has too many open connections right now. Wait a minute and try again.';
+  if (code.startsWith('53'))
+    return 'The database refused the work because a resource limit was reached. On Neon this usually means a monthly limit (network transfer or compute) is used up and the database is paused: check Usage on the project Overview page (docs/deployment/vercel-neon.md).';
   if (code === '3D000')
     return 'That database does not exist. Check the database name at the end of DATABASE_URL.';
   if (['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET'].includes(code))

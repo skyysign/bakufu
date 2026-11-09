@@ -112,12 +112,12 @@ export function CharacterRemoval({
   const preview = review?.preview;
   return (
     <section className="artwork-backfill character-removal" aria-labelledby="removal-title">
-      <h3 id="removal-title">Remove characters</h3>
+      <h3 id="removal-title">Remove characters without a picture</h3>
       <p className="field-help">
-        Removed characters leave packs, the glossary and wishlists. Anyone who owns one gets the
-        card&apos;s recycle value in gems, as if they had recycled it themselves. Characters whose
-        card is listed on the market or reserved in a trade are skipped. Adding a character again
-        later brings it back.
+        Cards without a picture show initials. Removed characters leave packs, the glossary and
+        wishlists. Anyone who owns one gets the card&apos;s recycle value in gems, as if they had
+        recycled it themselves. Characters whose card is listed on the market or reserved in a trade
+        are skipped. Adding a character again later brings it back.
       </p>
       {message && (
         <p className="success-note" role="status">
@@ -149,6 +149,7 @@ export function CharacterRemoval({
               {busy ? 'Reviewing…' : 'Remove all without a picture…'}
             </button>
           </div>
+          <h4 className="rarity-subtitle">Remove one character</h4>
           <label className="rarity-search">
             Find a character to remove
             <input

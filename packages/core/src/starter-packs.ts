@@ -1,7 +1,12 @@
 import { starterPackPlanSchema, type RealmConfig } from '../../config/src/index';
 import type { Character, StarterPack } from './index';
 import { GameError } from './errors';
-import { catalogPackGrouping, defaultPackName, isDemographicCategory } from './pack-themes';
+import {
+  catalogPackGrouping,
+  defaultPackName,
+  isDemographicCategory,
+  isMediumCategory,
+} from './pack-themes';
 
 function categoryPools(characters: Character[]) {
   const categories = new Map<string, Set<string>>();
@@ -70,13 +75,16 @@ export function generatePacks(characters: Character[], config: RealmConfig): Sta
   // Anime/manga catalogs lead with their actual demographic tags, then add the
   // largest distinct genre/theme pools for variety. Genres are never relabelled
   // as demographics; each pack keeps its exact source category.
+  // Medium packs (Anime, Manga, Manhwa, …) come next for fans of one medium; a
+  // medium covering nearly the whole roster would repeat All Characters.
+  const distinct = ([, ids]: [string, Set<string>]) =>
+    ids.size < characters.length * nearTotalPoolShare;
   const candidates = demographicMode
     ? [
         ...bySize.filter(([category]) => isDemographicCategory(category)),
+        ...bySize.filter((pool) => isMediumCategory(pool[0]) && distinct(pool)),
         ...bySize.filter(
-          ([category, ids]) =>
-            !isDemographicCategory(category) &&
-            ids.size < characters.length * nearTotalPoolShare,
+          (pool) => !isDemographicCategory(pool[0]) && !isMediumCategory(pool[0]) && distinct(pool),
         ),
       ]
     : bySize;

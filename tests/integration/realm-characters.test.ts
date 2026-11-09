@@ -8,8 +8,6 @@ import {
   realmPackPlan,
   retireRealmPack,
   setRealmCharacterGenders,
-  backfillRealmArtwork,
-  realmArtworkGaps,
   additionTier,
   bootstrap,
   browseRealmCatalog,
@@ -99,6 +97,9 @@ describe('adding missing characters to an existing realm', () => {
       reason: null,
       artworkCount: 0,
       artworkPermission: null,
+      // The fixture's seven series predate medium categories.
+      seriesCount: 7,
+      untaggedSeries: 7,
     });
     const check = await checkRealmCharacters(db, admin, realm, {
       characters: [
@@ -233,60 +234,6 @@ describe('adding missing characters to an existing realm', () => {
       [realm],
     );
     expect(unchanged.rows[0].count).toBe(0);
-  });
-});
-
-describe('adding artwork to characters already in a realm', () => {
-  it('fills only missing references, keeps existing ones and is safe to retry', async () => {
-    const gaps = await realmArtworkGaps(db, admin, realm);
-    expect(gaps).toMatchObject({ source: 'mal', canFetch: true });
-    expect(gaps.missing).toContain(roster.characters[5].sourceKey);
-    expect(gaps.missing).not.toContain('mal:910005001'); // added earlier with artwork
-    const artwork = (id: number) => ({
-      url: `https://cdn.myanimelist.net/images/characters/1/original-backfill-${id}.jpg`,
-      sourceUrl: `https://myanimelist.net/character/${id}`,
-      permission: 'Original fixture reference; never fetched',
-    });
-    const input = {
-      artwork: [
-        { sourceKey: roster.characters[5].sourceKey, artwork: artwork(5) },
-        { sourceKey: roster.characters[6].sourceKey, artwork: artwork(6) },
-        { sourceKey: 'mal:910005001', artwork: artwork(5001) },
-      ],
-      rightsConfirmed: true,
-    };
-    const result = await backfillRealmArtwork(db, admin, realm, input);
-    expect(result.updated).toBe(2);
-    expect(result.remaining).toBe(gaps.missing.length - 2);
-    const saved = await db.query(
-      `SELECT source_key,provenance->'artwork'->>'url' AS url FROM characters
-      WHERE realm_id=$1 AND source_key=ANY($2::text[]) ORDER BY source_key`,
-      [realm, [roster.characters[5].sourceKey, 'mal:910005001']],
-    );
-    expect(saved.rows).toEqual([
-      { source_key: roster.characters[5].sourceKey, url: artwork(5).url },
-      {
-        source_key: 'mal:910005001',
-        url: 'https://cdn.myanimelist.net/images/characters/1/original-addition.jpg',
-      },
-    ]);
-    expect((await backfillRealmArtwork(db, admin, realm, input)).updated).toBe(0);
-    await expect(
-      backfillRealmArtwork(db, admin, realm, {
-        artwork: [{ sourceKey: roster.characters[7].sourceKey, artwork: { url: 'https://example.com/x.jpg' } }],
-        rightsConfirmed: true,
-      }),
-    ).rejects.toThrow();
-    await expect(
-      backfillRealmArtwork(db, player, realm, input),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(
-      backfillRealmArtwork(db, admin, demoRealm, {
-        artwork: [{ sourceKey: 'lantern-demo:mira', artwork: artwork(1) }],
-        rightsConfirmed: true,
-      }),
-    ).rejects.toMatchObject({ code: 'CATALOG_FIXED' });
-    expect((await realmArtworkGaps(db, admin, demoRealm)).canFetch).toBe(false);
   });
 });
 

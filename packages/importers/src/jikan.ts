@@ -282,7 +282,7 @@ export async function fetchJikanApiStep(
               (category) => category.name,
             ),
             ...(era ? [era] : []),
-            ...(info.category ? [info.category] : []),
+            ...info.categories,
           ]),
         };
       }),

@@ -24,7 +24,7 @@ export async function tradeViews(
 ): Promise<TradeView[]> {
   const rows = (
     await tx.query(
-      `SELECT t.*,v.creator_offer,v.counterparty_offer,a.trade_code AS creator_code,b.trade_code AS counterparty_code,
+      `SELECT t.*,v.creator_offer,v.counterparty_offer,v.changed_by,a.trade_code AS creator_code,b.trade_code AS counterparty_code,
     ARRAY(SELECT account_id FROM trade_confirmations c WHERE c.realm_id=t.realm_id AND c.trade_id=t.id AND c.version=t.offer_version) AS confirmed
     FROM trades t JOIN trade_versions v ON v.realm_id=t.realm_id AND v.trade_id=t.id AND v.version=t.offer_version
     JOIN memberships a ON a.realm_id=t.realm_id AND a.account_id=t.creator_id
@@ -56,6 +56,8 @@ export async function tradeViews(
     return {
       id: row.id,
       version: row.offer_version,
+      protocol: row.protocol === 2 ? 2 : 1,
+      changedByMe: row.changed_by === actorId,
       status: tradeStatusAt(row.status as TradeStatus, row.expires_at.toISOString(), now.getTime()),
       counterpartyCode: mine ? row.counterparty_code : row.creator_code,
       createdAt: row.created_at.toISOString(),

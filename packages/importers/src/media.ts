@@ -22,20 +22,30 @@ export const jikanMedia = [
 export type JikanMedium = (typeof jikanMedia)[number];
 export const jikanMediumInfo: Record<
   JikanMedium,
-  { path: 'anime' | 'manga'; type: string; label: string; category?: string }
+  { path: 'anime' | 'manga'; type: string; label: string; categories: string[] }
 > = {
-  anime: { path: 'anime', type: 'tv', label: 'Anime (TV)' },
+  anime: { path: 'anime', type: 'tv', label: 'Anime (TV)', categories: ['Anime'] },
   ona: {
     path: 'anime',
     type: 'ona',
     label: 'Web anime (ONA), includes most donghua',
-    category: 'Web Anime',
+    categories: ['Web Anime'],
   },
-  movie: { path: 'anime', type: 'movie', label: 'Anime films', category: 'Anime Film' },
-  manga: { path: 'manga', type: 'manga', label: 'Manga' },
-  manhwa: { path: 'manga', type: 'manhwa', label: 'Manhwa (Korean)', category: 'Manhwa' },
-  manhua: { path: 'manga', type: 'manhua', label: 'Manhua (Chinese)', category: 'Manhua' },
-  lightnovel: { path: 'manga', type: 'lightnovel', label: 'Light novels', category: 'Light Novel' },
+  movie: {
+    path: 'anime',
+    type: 'movie',
+    label: 'Anime films',
+    categories: ['Anime', 'Anime Film'],
+  },
+  manga: { path: 'manga', type: 'manga', label: 'Manga', categories: ['Manga'] },
+  manhwa: { path: 'manga', type: 'manhwa', label: 'Manhwa (Korean)', categories: ['Manhwa'] },
+  manhua: { path: 'manga', type: 'manhua', label: 'Manhua (Chinese)', categories: ['Manhua'] },
+  lightnovel: {
+    path: 'manga',
+    type: 'lightnovel',
+    label: 'Light novels',
+    categories: ['Light Novel'],
+  },
 };
 
 /** Most characters one AniList series may contribute; loaded 25 per request. */

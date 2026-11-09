@@ -153,6 +153,21 @@ export function packGroup(category: string | null): PackGroup {
   return genreCategories.has(normalized(category)) ? 'genre' : 'theme';
 }
 
+/** Categories that name a medium; packs for them suit fans of one medium. */
+export const mediumCategories = [
+  'Anime',
+  'Manga',
+  'Manhwa',
+  'Manhua',
+  'Donghua',
+  'Light Novel',
+  'Web Anime',
+  'Anime Film',
+] as const;
+export function isMediumCategory(category: string): boolean {
+  return (mediumCategories as readonly string[]).includes(category);
+}
+
 export function isDemographicCategory(category: string): boolean {
   return byCategory.get(normalized(category))?.demographic === true;
 }

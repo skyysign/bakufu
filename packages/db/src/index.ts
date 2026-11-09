@@ -33,7 +33,7 @@ export {
   maximumRealmCategoryPacks,
 } from './realm-packs';
 export type { RealmPackPlan, RealmPackCandidate, RealmPackAddition } from './realm-packs';
-export { recentPulls } from './pull-feed';
+export { pullFeedChanged, recentPulls } from './pull-feed';
 export type { PullFeed, PulledCard } from './pull-feed';
 export {
   setTierSound,
@@ -57,16 +57,14 @@ export {
   addRealmCharacters,
   additionTier,
   realmCharacterAdditionLimit,
-  realmArtworkGaps,
-  backfillRealmArtwork,
   realmGenderGaps,
   setRealmCharacterGenders,
+  tagRealmSeries,
 } from './realm-characters';
 export type {
   RealmCharacterSummary,
   RealmCharacterCheck,
   RealmCharacterAddition,
-  RealmArtworkGaps,
   RealmGenderGaps,
 } from './realm-characters';
 export type {
@@ -86,7 +84,7 @@ export { recycleCard, recycleCards, type BatchRecyclingResult } from './recyclin
 export { buyUpgrade } from './upgrades';
 export { setWishlistEntry } from './wishlist';
 export { previewRealmSettings, applyRealmSettings } from './settings';
-export { tradeCommand } from './trades';
+export { tradeCommand, tradePartnerCards } from './trades';
 export { exportPlayer, parsePlayerArchive, playerArchiveSchema } from './export';
 
 export { buyCollectorRank } from './ranks';

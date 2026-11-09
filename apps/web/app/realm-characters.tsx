@@ -9,10 +9,10 @@ import type {
 } from '@card-engine/db';
 import { post } from './api-client';
 import { GameIcon } from './game-art';
-import { ArtworkBackfill } from './artwork-backfill';
 import { GenderBackfill } from './gender-backfill';
 import { RosterGrowth } from './roster-growth';
 import { CharacterRemoval } from './character-removal';
+import { MediumTagging } from './medium-tagging';
 import { aniListMediumOptions, malMediumOptions } from './medium-picker';
 
 type Work = { id: number; title: string; categories: string[] };
@@ -61,10 +61,10 @@ export function RealmCharacters({
     [busy, setBusy] = useState<'search' | 'cast' | 'add' | null>(null),
     [error, setError] = useState(''),
     [result, setResult] = useState<RealmCharacterAddition | null>(null),
-    [backfillBusy, setBackfillBusy] = useState(false),
     [genderBusy, setGenderBusy] = useState(false),
     [growthBusy, setGrowthBusy] = useState(false),
-    [removalBusy, setRemovalBusy] = useState(false);
+    [removalBusy, setRemovalBusy] = useState(false),
+    [taggingBusy, setTaggingBusy] = useState(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -73,8 +73,8 @@ export function RealmCharacters({
     };
   }, []);
   useEffect(
-    () => onLockChange(busy === 'add' || backfillBusy || genderBusy || growthBusy || removalBusy),
-    [busy, backfillBusy, genderBusy, growthBusy, removalBusy, onLockChange],
+    () => onLockChange(busy === 'add' || genderBusy || growthBusy || removalBusy || taggingBusy),
+    [busy, genderBusy, growthBusy, removalBusy, taggingBusy, onLockChange],
   );
   useEffect(() => () => onLockChange(false), [onLockChange]);
 
@@ -498,12 +498,25 @@ export function RealmCharacters({
               service={service}
               consent={consent}
               permission={artwork ? permission.trim() : ''}
-              disabled={disabled || !!busy || backfillBusy || genderBusy}
+              disabled={disabled || !!busy || genderBusy}
+              currentCount={summary.characterCount}
               onBusyChange={setGrowthBusy}
               onAdded={() => {
                 void loadSummary();
                 router.refresh();
               }}
+            />
+          )}
+          {provider === 'mal' && (
+            <MediumTagging
+              realmId={realmId}
+              service={service}
+              consent={consent}
+              untaggedSeries={summary.untaggedSeries}
+              seriesCount={summary.seriesCount}
+              disabled={disabled || !!busy || genderBusy || growthBusy}
+              onBusyChange={setTaggingBusy}
+              onTagged={() => router.refresh()}
             />
           )}
           {provider === 'anilist' && (
@@ -513,21 +526,11 @@ export function RealmCharacters({
             </p>
           )}
           {provider === 'mal' && (
-            <ArtworkBackfill
-              realmId={realmId}
-              service={service}
-              consent={consent}
-              permission={artwork ? permission : ''}
-              disabled={disabled || !!busy || growthBusy}
-              onBusyChange={setBackfillBusy}
-            />
-          )}
-          {provider === 'mal' && (
             <GenderBackfill
               realmId={realmId}
               service={service}
               consent={consent}
-              disabled={disabled || !!busy || backfillBusy || growthBusy}
+              disabled={disabled || !!busy || growthBusy}
               onBusyChange={setGenderBusy}
             />
           )}
@@ -561,7 +564,7 @@ export function RealmCharacters({
       <CharacterRemoval
         realmId={realmId}
         withoutArtwork={summary.characterCount - summary.artworkCount}
-        disabled={disabled || !!busy || backfillBusy || genderBusy || growthBusy}
+        disabled={disabled || !!busy || genderBusy || growthBusy}
         onBusyChange={setRemovalBusy}
         onRemoved={() => {
           void loadSummary();

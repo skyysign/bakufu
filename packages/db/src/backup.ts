@@ -94,6 +94,7 @@ const columns = {
     'updated_at',
     'expires_at',
     'completed_at',
+    'protocol',
   ],
   trade_versions: [
     'realm_id',
@@ -359,6 +360,8 @@ function columnsForMigrations(
   )
     throw new Error('Unsupported backup schema. Use the matching source release.');
   const source: Partial<Record<keyof typeof columns, readonly string[]>> = { ...columns };
+  if (!migrations.some((migration) => migration.name === '0030_trade_proposals.sql'))
+    source.trades = columns.trades.filter((field) => field !== 'protocol');
   if (!migrations.some((migration) => migration.name === '0029_character_removals.sql')) {
     delete source.character_removals;
     source.characters = columns.characters.filter((field) => field !== 'retired_at');
@@ -626,7 +629,9 @@ export async function restoreBackup(
                       ? 0
                       : table === 'openings' && field === 'pack_count' && !('pack_count' in row)
                         ? 1
-                        : (row[field] ?? null),
+                        : table === 'trades' && field === 'protocol' && !('protocol' in row)
+                          ? 1
+                          : (row[field] ?? null),
           ),
         );
       }

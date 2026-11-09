@@ -19,6 +19,10 @@ export type TradeCard = {
 export type TradeView = {
   id: string;
   version: number;
+  /** 1: each player edits their own side; 2: proposals with both sides (see trades service). */
+  protocol: 1 | 2;
+  /** Whether this player wrote the current version. */
+  changedByMe: boolean;
   status: TradeStatus;
   counterpartyCode: string;
   createdAt: string;

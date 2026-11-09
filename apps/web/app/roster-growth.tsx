@@ -14,6 +14,7 @@ import type { JikanApiResult } from '../../../packages/importers/src/jikan';
 import { jikanPacing } from '../../../packages/importers/src/jikan-pacing';
 import { post } from './api-client';
 import { MediumPicker, malMediumOptions } from './medium-picker';
+import { freeHostingRosterLimit, freeHostingRosterNote } from './roster-limits';
 
 const growthStops = [50, 100, 250, 500, 1000, 1500, 2000, 3000, 5000, 7500, 10000];
 const perSeriesChoices = [10, 15, 25, 50, 100];
@@ -33,6 +34,7 @@ export function RosterGrowth({
   consent,
   permission,
   disabled,
+  currentCount,
   onBusyChange,
   onAdded,
 }: {
@@ -42,6 +44,8 @@ export function RosterGrowth({
   /** Artwork permission statement; empty means no artwork. */
   permission: string;
   disabled: boolean;
+  /** Characters the realm has now (for the free hosting size note). */
+  currentCount: number;
   onBusyChange: (busy: boolean) => void;
   onAdded: () => void;
 }) {
@@ -259,6 +263,12 @@ export function RosterGrowth({
           </select>
         </div>
       </div>
+      {currentCount + goal > freeHostingRosterLimit && (
+        <p className="field-help">
+          That makes up to {(currentCount + goal).toLocaleString()} characters.{' '}
+          {freeHostingRosterNote}
+        </p>
+      )}
       {!consent && <p className="field-help">Confirm the lookup above (provider use) to start.</p>}
       <div className="collection-admin-buttons">
         {busy ? (

@@ -15,7 +15,10 @@ describe('backup command failure reasons', () => {
     expect(backupFailureReason(withCode('XX000', secret))).toBe(
       'Backup operation failed (code XX000). Check the arguments, passphrase, schema version, file permissions, and that a restore target is empty.',
     );
-    for (const code of ['42P01', '28P01', 'ENOTFOUND', 'EEXIST', 'EACCES', 'XX000'])
+    expect(backupFailureReason(withCode('53000', secret))).toMatch(/monthly limit/);
+    expect(backupFailureReason(withCode('53100', secret))).toMatch(/database is full/);
+    expect(backupFailureReason(withCode('53300', secret))).toMatch(/too many open connections/);
+    for (const code of ['42P01', '28P01', 'ENOTFOUND', 'EEXIST', 'EACCES', 'XX000', '53000'])
       expect(backupFailureReason(withCode(code, secret))).not.toContain('hunter2');
   });
   it('explains passphrase and schema problems', () => {

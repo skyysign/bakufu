@@ -22,8 +22,8 @@ export { aniListMaxPerWork, aniListMedia, aniListMediumInfo, type AniListMedium 
 /** The medium category a work gets from its type, country of origin and format. */
 function mediumCategory(type: 'ANIME' | 'MANGA', country?: string | null, format?: string | null) {
   if (format === 'NOVEL') return 'Light Novel';
-  if (type === 'ANIME') return country === 'CN' ? 'Donghua' : null;
-  return country === 'KR' ? 'Manhwa' : country === 'CN' || country === 'TW' ? 'Manhua' : null;
+  if (type === 'ANIME') return country === 'CN' ? 'Donghua' : 'Anime';
+  return country === 'KR' ? 'Manhwa' : country === 'CN' || country === 'TW' ? 'Manhua' : 'Manga';
 }
 export const aniListStepDelayMs = 2500;
 

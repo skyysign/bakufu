@@ -18,6 +18,7 @@ import type {
 import { jikanPacing } from '../../../packages/importers/src/jikan-pacing';
 import { jikanMediumInfo } from '../../../packages/importers/src/media';
 import { MediumPicker, malMediumOptions } from './medium-picker';
+import { freeHostingRosterLimit, freeHostingRosterNote } from './roster-limits';
 
 type Props = {
   onStart: () => void;
@@ -654,6 +655,7 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
             60000,
         )}
         {detectGender && ' including the waifu & husbando check'}.
+        {target > freeHostingRosterLimit && ` ${freeHostingRosterNote}`}
         {target > 25000 &&
           ' Beyond about 25,000 characters, realm pages load more slowly (around 1.3 seconds at 100,000 on a desktop PC; longer on small servers).'}{' '}
         The installed roster keeps categories and odds stable during an API outage.

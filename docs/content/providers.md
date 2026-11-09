@@ -57,17 +57,28 @@ build the roster:
 
 | Kind | MyAnimeList list and type | Category added to its characters |
 | --- | --- | --- |
-| Anime (TV) | anime, `tv` | none |
+| Anime (TV) | anime, `tv` | Anime |
 | Web anime (ONA), includes most donghua | anime, `ona` | Web Anime |
-| Anime films | anime, `movie` | Anime Film |
-| Manga | manga, `manga` | none |
+| Anime films | anime, `movie` | Anime, Anime Film |
+| Manga | manga, `manga` | Manga |
 | Manhwa (Korean) | manga, `manhwa` | Manhwa |
 | Manhua (Chinese) | manga, `manhua` | Manhua |
 | Light novels | manga, `lightnovel` | Light Novel |
 
 MyAnimeList has no separate donghua type: Chinese animation is listed almost
-entirely as web anime (ONA), next to some Japanese web series. The new
-categories let you add a Manhwa, Manhua or Light Novel pack under **Packs**.
+entirely as web anime (ONA), next to some Japanese web series. These medium
+categories make **medium packs** (Anime, Manga, Manhwa, …) for fans of one
+medium: new realms create them right after the demographic packs (unless one
+medium covers nearly the whole roster, which would repeat All Characters), and
+**Packs** can add one later. AniList tags Anime, Donghua, Manga, Manhwa, Manhua
+and Light Novel from type, country of origin and format.
+
+Characters imported before medium categories have none. **Administration →
+Characters → Tag series by medium** (MyAnimeList realms) reads MyAnimeList's
+popular series lists of the chosen kinds (titles only, 25 per request) and tags
+every realm series whose title matches (`tagRealmSeries`,
+`POST /api/realm-characters/series-tags`). A title found in both lists (an
+anime and its manga) gets both categories.
 Several kinds alternate page by page, most popular series first.
 
 
@@ -290,9 +301,11 @@ out a bulk walk.
 
 ## Removing characters
 
-**Remove characters** (Administration → Characters, every realm) removes one
-character found by name or series, or **every character without a picture** in
-one go. Each removal is reviewed first: how many characters, which ones players
+Characters keep the artwork reference they were imported with; there is no
+later artwork walk (pictures load from the provider, nothing is stored).
+**Remove characters without a picture** (Administration → Characters, every
+realm) removes all of them in one go; **Remove one character** below it removes
+a single character found by name or series. Each removal is reviewed first: how many characters, which ones players
 own, and the gems their owners get back.
 
 - A removed character leaves packs, the glossary, wishlists (its wishes are
@@ -314,21 +327,6 @@ own, and the gems their owners get back.
 Each removal is journaled in `character_removals` (migration 0029) and checked
 on restore. The service is `packages/db/src/character-removal.ts`
 (`POST /api/character-removal/preview`, `POST /api/character-removal`).
-
-## Adding artwork to existing characters
-
-Realms created without the artwork opt-in show initials instead of pictures.
-For MyAnimeList rosters, **Administration → Characters → Add artwork to existing
-characters** fixes that: with the lookup confirmed and **Include character artwork
-through API, permission needed** ticked (step 1 on the same page), **Fetch missing
-artwork** walks the most popular anime, manga or both again (paced like realm
-creation, up to 50 characters per series) and adds the artwork reference to every
-character it finds by stable source key. Existing references are never replaced;
-names, rarity, ownership and receipts stay unchanged (`backfillRealmArtwork`,
-`GET/POST /api/realm-characters/artwork`). The walk pauses on errors, can be
-resumed and stops after 80 popular series in a row without a match; characters
-from less popular series may stay without a picture. AniList and hand-made
-catalogs are not supported by this walk.
 
 ## Waifus and husbandos
 

@@ -22,7 +22,9 @@ export async function validateTradeBackup(tx: Transaction) {
       row.realm_id === trade.realm_id && row.trade_id === trade.id;
     const history = versions.filter(belongs),
       parties = [trade.creator_id, trade.counterparty_id],
-      rules = parseRealmConfig(trade.config_snapshot).trading;
+      rules = parseRealmConfig(trade.config_snapshot).trading,
+      // Protocol 2 (proposals): versions hold both sides and their author confirms them.
+      proposals = (trade.protocol ?? 1) === 2;
     check(history.length === trade.offer_version && rules.enabled);
     for (let i = 0; i < history.length; i++) {
       const version = history[i],
@@ -35,8 +37,11 @@ export async function validateTradeBackup(tx: Transaction) {
         check(false);
       }
       if (i === 0)
-        check(version.changed_by === trade.creator_id && b.cardIds.length === 0 && b.gems === 0);
-      else
+        check(
+          version.changed_by === trade.creator_id &&
+            (proposals || (b.cardIds.length === 0 && b.gems === 0)),
+        );
+      else if (!proposals)
         check(
           same(
             version.changed_by === trade.creator_id ? b : a,
@@ -49,6 +54,7 @@ export async function validateTradeBackup(tx: Transaction) {
         (row) => belongs(row) && row.version === version.version,
       );
       check(confirmed.every((row) => parties.includes(row.account_id)));
+      if (proposals) check(confirmed.some((row) => row.account_id === version.changed_by));
       if (i < history.length - 1) check(confirmed.length < 2);
     }
     const current = history[history.length - 1],
@@ -67,7 +73,11 @@ export async function validateTradeBackup(tx: Transaction) {
             .filter((row) => row.account_id === actor)
             .map((row) => row.card_id)
             .sort(),
-          trade.status === 'pending' ? [...offer.cardIds].sort() : [],
+          // Protocol 2 reserves a side only while its owner confirmed this version.
+          trade.status === 'pending' &&
+            (!proposals || confirmed.some((row) => row.account_id === actor))
+            ? [...offer.cardIds].sort()
+            : [],
         ),
       );
     for (const reserved of reservations.filter(belongs)) {

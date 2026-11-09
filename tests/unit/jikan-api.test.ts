@@ -58,7 +58,8 @@ describe('on-demand Jikan catalog boundary', () => {
     expect(result).toEqual({
       kind: 'works',
       medium: 'anime',
-      works: [work],
+      // TV anime series are tagged Anime for medium packs.
+      works: [{ ...work, categories: ['Action', 'Anime', 'Fantasy'] }],
       page: 1,
       hasNextPage: true,
     });
@@ -94,7 +95,7 @@ describe('on-demand Jikan catalog boundary', () => {
     const result = await fetchJikanApiStep({ ...common, step: 'works', page: 1 }, fetcher);
     expect(result).toMatchObject({
       kind: 'works',
-      works: [{ categories: ['Action', 'Isekai', 'Mecha', 'Shounen'] }],
+      works: [{ categories: ['Action', 'Anime', 'Isekai', 'Mecha', 'Shounen'] }],
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
     const plain = await fetchJikanApiStep({ ...common, step: 'works', page: 1 }, async () =>
@@ -105,7 +106,10 @@ describe('on-demand Jikan catalog boundary', () => {
         pagination: { has_next_page: false },
       }),
     );
-    expect(plain).toMatchObject({ kind: 'works', works: [{ categories: ['Action', 'Fantasy'] }] });
+    expect(plain).toMatchObject({
+      kind: 'works',
+      works: [{ categories: ['Action', 'Anime', 'Fantasy'] }],
+    });
   });
   it('uses only the selected fixed service and rejects arbitrary transport hosts', async () => {
     const fetcher = vi.fn(async () => response({ data: [], pagination: { has_next_page: false } }));
@@ -282,9 +286,9 @@ describe('on-demand Jikan catalog boundary', () => {
     );
     if (works.kind !== 'works') throw new Error('Unexpected result.');
     expect(works.works.map((item) => item.categories)).toEqual([
-      ['2010s', 'Action'],
-      ['1990s', 'Drama'],
-      [],
+      ['2010s', 'Action', 'Anime'],
+      ['1990s', 'Anime', 'Drama'],
+      ['Anime'],
     ]);
     const limited = await fetchJikanApiStep(
       { ...common, step: 'characters', work, perWork: 10 },
@@ -337,11 +341,18 @@ describe('on-demand Jikan catalog boundary', () => {
     // A manhwa's characters come from MyAnimeList's manga list (shared ID space).
     await fetchJikanApiStep({ ...common, medium: 'manhwa', step: 'characters', work }, fetcher);
     expect(requested.at(-1)).toContain(`/manga/${work.id}/characters`);
-    // Plain TV anime and manga keep their categories unchanged.
+    // TV anime and manga are tagged Anime and Manga.
     const tv = await fetchJikanApiStep({ ...common, step: 'works', page: 1 }, fetcher);
     if (tv.kind !== 'works') throw new Error('Unexpected result.');
-    expect(tv.works[0].categories).toEqual(['Action']);
+    expect(tv.works[0].categories).toEqual(['Action', 'Anime']);
     expect(requested.at(-1)).toContain('type=tv');
+    const manga = await fetchJikanApiStep(
+      { ...common, medium: 'manga', step: 'works', page: 1 },
+      fetcher,
+    );
+    if (manga.kind !== 'works') throw new Error('Unexpected result.');
+    expect(manga.works[0].categories).toEqual(['Action', 'Manga']);
+    expect(requested.at(-1)).toContain('type=manga');
   });
   it('walks popular anime and manga pages round-robin with separate ID namespaces', () => {
     let state = newJikanSeed('both', 4, 'tenrai', 5);

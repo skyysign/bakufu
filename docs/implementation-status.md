@@ -131,6 +131,25 @@ can grow a MyAnimeList realm with the popular-roster walk and remove characters
 `tests/integration/character-removal.test.ts`, the importer unit tests and
 `tests/support/roster-tools-browser.ts`.
 
+Ordinary requests read the realm's roster from a per-process cache that
+PostgreSQL verifies by fingerprint in the same transaction (`roster-cache.ts`),
+and the Live pulls poll asks only whether a newer big pull exists, so database
+transfer stays small on hosted plans with transfer caps (Neon Free: 5 GB a
+month). `tests/integration/transfer-budget.test.ts` keeps the budgets (page
+view, opening, pull feed) for a 3,000-character realm and checks that roster
+changes from another process show up at once.
+
+Trades are proposals: a player picks both sides (their cards and gems, and the
+other player's cards and gems), sending confirms their side, and the other
+player accepts, counters or declines; requested cards are never locked by an
+offer (protocol 2, migration 0030; older pending trades keep protocol 1). The
+collection has a **Series** view with owned/total per started series. Imported
+series carry a medium category (Anime, Manga, Manhwa, …) for medium packs, and
+MyAnimeList realms can tag older series by medium. Covered by
+`tests/integration/trade-proposals.test.ts`, `tests/unit/medium-packs.test.ts`,
+the series-tagging test in `tests/integration/character-removal.test.ts` and the
+browser trade flow in `scripts/e2e.ts`.
+
 Covered by `tests/unit/fame-floors.test.ts`,
 `tests/integration/tier-adjustments.test.ts` and the browser check in
 `tests/support/rarity-browser.ts`.
@@ -254,8 +273,7 @@ your live database or external character APIs. See the [run guide](deployment/qu
 [automated restore checks](deployment/restore-checks.md),
 [portable HTTPS deployment](deployment/https.md),
 [encrypted offsite copies](deployment/offsite-backups.md),
-[backup alerts](deployment/backup-alerts.md),
-and [implementation and verification report](implementation-report.md).
+and [backup alerts](deployment/backup-alerts.md).
 
 ### Current repository layout
 

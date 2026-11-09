@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { parseRealmConfig, realmConfigSchema, type RealmConfig } from '../../config/src/index';
@@ -54,7 +54,10 @@ async function state(tx: Transaction, realmId: string) {
   }
   const packs = [];
   for (const pack of (
-    await tx.query(`SELECT id,name,category FROM packs p WHERE realm_id=$1 AND (to_jsonb(p)->>'retired_at') IS NULL ORDER BY id`, [realmId])
+    await tx.query(
+      `SELECT id,name,category FROM packs p WHERE realm_id=$1 AND (to_jsonb(p)->>'retired_at') IS NULL ORDER BY id`,
+      [realmId],
+    )
   ).rows)
     packs.push({
       id: pack.id as string,
@@ -62,9 +65,11 @@ async function state(tx: Transaction, realmId: string) {
       pool: await eligiblePool(tx, realmId, pack.category),
     });
   // Only the digest is retained; private IDs never enter a preview response.
+  // PostgreSQL hashes the realm state (SHA-256 of the same UTF-8 text), so the
+  // whole realm never crosses the network just to be fingerprinted.
   const fingerprint = (
     await tx.query(
-      `SELECT jsonb_build_array(
+      `SELECT encode(sha256(convert_to(jsonb_build_array(
     (SELECT jsonb_agg(to_jsonb(m) ORDER BY account_id) FROM memberships m WHERE realm_id=$1),
     (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM cards c WHERE realm_id=$1 AND recycled_at IS NULL),
     (SELECT jsonb_agg(to_jsonb(w) ORDER BY id) FROM wishlist_entries w WHERE realm_id=$1),
@@ -78,10 +83,10 @@ async function state(tx: Transaction, realmId: string) {
     (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM trades t WHERE realm_id=$1),
     (SELECT jsonb_agg(to_jsonb(v) ORDER BY trade_id,version) FROM trade_versions v WHERE realm_id=$1),
     (SELECT jsonb_agg(to_jsonb(c) ORDER BY trade_id,version,account_id) FROM trade_confirmations c WHERE realm_id=$1)
-  )::text AS data`,
+  )::text,'UTF8')),'hex') AS hash`,
       [realmId],
     )
-  ).rows[0].data;
+  ).rows[0].hash as string;
   const pendingTrades = (
     await tx.query(
       "SELECT count(*)::integer AS count FROM trades WHERE realm_id=$1 AND status='pending' AND expires_at>clock_timestamp()",
@@ -92,7 +97,7 @@ async function state(tx: Transaction, realmId: string) {
     members,
     packs,
     pendingTrades,
-    hash: createHash('sha256').update(fingerprint).digest('hex'),
+    hash: fingerprint,
   };
 }
 

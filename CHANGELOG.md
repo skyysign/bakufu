@@ -7,10 +7,23 @@ know which backups it can restore.
 
 ## Unreleased
 
-Newest migration: `0029_character_removals.sql` (realm config v12).
+Newest migration: `0030_trade_proposals.sql` (realm config v12).
 
 ### Added
 
+- Ready for a public repository: README banner, `SECURITY.md` (private
+  vulnerability reports) and `CONTRIBUTING.md`.
+- **Trades redesigned**: New trade → pick a player → choose what you give and
+  what you want from their collection (cards and gems, with values) → Send
+  offer. They Accept (completes at once), Counter-offer (both sides) or
+  Decline. Open trades are grouped into "Waiting for you" and "Waiting for
+  them". Asking for a card never locks it. Older pending trades keep their
+  rules until they end.
+- **Series in the collection**: a Series view shows each started series with
+  owned / total, how many are still in packs, and opens that series' cards.
+- **Medium packs**: every imported series is tagged Anime, Manga, Manhwa,
+  Manhua, Donghua, Light Novel, Web Anime or Anime Film; new realms get a pack
+  per medium. "Tag series by medium" tags realms imported earlier.
 - **Recycle from the opening window**: every card in the opening results has a
   Recycle button, plus "Recycle all common/uncommon/rare" for openings with two
   or more of a tier (one confirmation, one all-or-nothing batch, retry-safe).
@@ -48,6 +61,24 @@ Newest migration: `0029_character_removals.sql` (realm config v12).
 
 ### Changed
 
+- **Database transfer** cut drastically (Neon Free allows 5 GB a month, which
+  busy realms used up within weeks). Each web server keeps a copy of a realm's
+  roster and asks PostgreSQL only for a fingerprint of it, inside the same
+  transaction, so results are exactly as before. Measured for a 3,000-character
+  realm: a page view (also after every action) moves about 60 KB instead of
+  1.4 MB, a 10-pack opening about 13 KB instead of 1 MB, and the 15-second
+  Live pulls check a few hundred bytes instead of about 330 KB (it downloads the
+  feed only when a new big pull appears). Game rules previews are hashed by
+  PostgreSQL instead of downloading the realm. A new test keeps these budgets.
+- Free-tier warnings: the realm wizard and Grow the roster note that rosters
+  above about 2,000 characters use up free hosting (Vercel + Neon) faster; the
+  Vercel + Neon guide explains every limit, how to check usage and what a paused
+  database looks like; the "temporarily unavailable" page mentions monthly
+  limits; `pnpm backup`/`restore` explain resource-limit errors (codes 53xxx).
+- A single-pack opening result shows the card almost as large as during the
+  reveal (with room for the Recycle button) instead of the small gallery size.
+- "Remove characters" is now "Remove characters without a picture", with
+  "Remove one character" below it.
 - `pnpm backup` and `pnpm restore` say what went wrong (passphrase too short or
   not matching, file exists, folder not shared with Docker, empty or outdated
   database, login refused, host unreachable) instead of one generic message;
@@ -66,6 +97,10 @@ Newest migration: `0029_character_removals.sql` (realm config v12).
 
 ### Removed
 
+- `docs/implementation-report.md` (a 3,500-line development log; it stays in the
+  git history). What works is in `docs/implementation-status.md`.
+- "Add artwork to existing characters" and its `/api/realm-characters/artwork`
+  endpoints: characters keep the artwork reference they were imported with.
 - The Wikidata importer and its `/api/catalog/wikidata` endpoint (no longer
   offered in the realm wizard since the MyAnimeList and AniList rosters).
 
@@ -106,4 +141,4 @@ Realms with unique ownership, packs and 1/5/10 bundles, recycling, trading,
 market, wishlists, collector ranks and rank tracks, gem claims, Discord sign-in
 and the `/bakufu` command, MyAnimeList and AniList roster preparation with
 waifu/husbando detection, reveal sounds per tier and character, encrypted
-backups with restore checks, and player exports. See `docs/implementation-report.md`.
+backups with restore checks, and player exports. See `docs/implementation-status.md`.

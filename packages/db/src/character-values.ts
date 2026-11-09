@@ -13,37 +13,35 @@ import {
 import { catalogSchema } from '../../importers/src/json';
 import { transaction, type Database, type Transaction } from './connection';
 import { requireMember } from './game';
+import { realmRoster, type Roster } from './roster-cache';
 
 export async function characterValuesForRealm(
   tx: Transaction,
   realmId: string,
   config: RealmConfig,
   effectiveConfig: RealmConfig = config,
+  /** The roster this transaction already read (see roster-cache.ts). */
+  known?: Roster,
 ): Promise<Record<string, CharacterValue>> {
-  // Schema-0011 snapshots (checked by restore and upgrade tests) predate the
-  // popularity column; read it directly when it exists, which is far cheaper
-  // than serializing every row.
-  const hasPopularity = (
-    await tx.query(
-      `SELECT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='characters'::regclass
-      AND attname='popularity' AND NOT attisdropped) AS present`,
-    )
-  ).rows[0].present as boolean;
-  const rows = (
-    await tx.query(
-      // Demand is aggregated once for wished characters instead of one
-      // correlated lookup per catalog row.
-      `WITH demand AS (SELECT w.character_id,count(*)::int AS demand FROM wishlist_entries w
+  // Every character of the realm (retired included) with its popularity comes
+  // from the verified roster cache; only wishlist demand is read here.
+  const roster = known ?? (await realmRoster(tx, realmId));
+  const demand = new Map(
+    (
+      await tx.query(
+        `SELECT w.character_id,count(*)::int AS demand FROM wishlist_entries w
       WHERE w.realm_id=$1 AND NOT EXISTS(SELECT 1 FROM cards owned WHERE owned.realm_id=w.realm_id AND owned.character_id=w.character_id AND owned.recycled_at IS NULL AND owned.owner_id=w.account_id)
-      GROUP BY w.character_id)
-    SELECT c.id,c.source_key AS "sourceKey",c.tier,
-    ${hasPopularity ? 'c.popularity::numeric' : 'NULL::numeric'} AS popularity,COALESCE(d.demand,0)::int AS demand
-    FROM characters c LEFT JOIN demand d ON d.character_id=c.id WHERE c.realm_id=$1`,
-      [realmId],
-    )
-  ).rows.map((row) => ({
-    ...row,
-    popularity: row.popularity === null ? null : Number(row.popularity),
+      GROUP BY w.character_id`,
+        [realmId],
+      )
+    ).rows.map((row) => [row.character_id as string, row.demand as number]),
+  );
+  const rows = roster.entries.map((entry) => ({
+    id: entry.character.id,
+    sourceKey: entry.character.sourceKey,
+    tier: entry.character.tier,
+    popularity: entry.popularity,
+    demand: demand.get(entry.character.id) ?? 0,
   }));
   const percentiles = popularityPercentiles(
     rows as { id: string; sourceKey: string; tier: Tier; popularity: number | null }[],

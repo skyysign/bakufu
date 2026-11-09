@@ -9,10 +9,10 @@ import {
   setTierOverride,
   realmGenderGaps,
   setRealmCharacterGenders,
+  tagRealmSeries,
   retireRealmPack,
-  realmArtworkGaps,
-  backfillRealmArtwork,
   recentPulls,
+  pullFeedChanged,
   setTierSound,
   removeTierSound,
   readTierSound,
@@ -36,6 +36,7 @@ import {
   inviteDiscordPlayer,
   recycleCard,
   recycleCards,
+  tradePartnerCards,
   previewCharacterRemoval,
   removeCharacters,
   buyUpgrade,
@@ -269,12 +270,9 @@ export async function POST(request: Request, context: Context) {
           rightsConfirmed: input.rightsConfirmed,
         }),
       );
-    if (path === 'realm-characters/artwork')
+    if (path === 'realm-characters/series-tags')
       return NextResponse.json(
-        await backfillRealmArtwork(db(), actor.id, String(input.realmId ?? ''), {
-          artwork: input.artwork,
-          rightsConfirmed: input.rightsConfirmed,
-        }),
+        await tagRealmSeries(db(), actor.id, String(input.realmId ?? ''), { tags: input.tags }),
       );
     if (path === 'realm-characters/check')
       return NextResponse.json(
@@ -517,6 +515,19 @@ export async function GET(request: Request, context: Context) {
         { headers: { 'Cache-Control': 'private, no-store' } },
       );
     }
+    if (path === 'trade-partner') {
+      const actor = await requireAccount(),
+        query = new URL(request.url).searchParams;
+      return NextResponse.json(
+        await tradePartnerCards(
+          db(),
+          actor.id,
+          query.get('realmId') ?? '',
+          query.get('code') ?? '',
+        ),
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
     if (path === 'realm-packs') {
       const actor = await requireAccount();
       return NextResponse.json(
@@ -525,11 +536,20 @@ export async function GET(request: Request, context: Context) {
       );
     }
     if (path === 'pulls') {
-      const actor = await requireAccount();
-      return NextResponse.json(
-        await recentPulls(db(), actor.id, new URL(request.url).searchParams.get('realmId') ?? ''),
-        { headers: { 'Cache-Control': 'private, no-store' } },
-      );
+      const actor = await requireAccount(),
+        query = new URL(request.url).searchParams,
+        realmId = query.get('realmId') ?? '',
+        after = query.get('after');
+      // Timed polls name the newest opening they show; answer "unchanged"
+      // without re-sending the feed when nothing newer was pulled.
+      if (after && !(await pullFeedChanged(db(), actor.id, realmId, after)))
+        return NextResponse.json(
+          { unchanged: true },
+          { headers: { 'Cache-Control': 'private, no-store' } },
+        );
+      return NextResponse.json(await recentPulls(db(), actor.id, realmId), {
+        headers: { 'Cache-Control': 'private, no-store' },
+      });
     }
     if (path === 'tier-sound' || path === 'character-sound') {
       const actor = await requireAccount(),
@@ -557,17 +577,6 @@ export async function GET(request: Request, context: Context) {
       const actor = await requireAccount();
       return NextResponse.json(
         await realmGenderGaps(
-          db(),
-          actor.id,
-          new URL(request.url).searchParams.get('realmId') ?? '',
-        ),
-        { headers: { 'Cache-Control': 'private, no-store' } },
-      );
-    }
-    if (path === 'realm-characters/artwork') {
-      const actor = await requireAccount();
-      return NextResponse.json(
-        await realmArtworkGaps(
           db(),
           actor.id,
           new URL(request.url).searchParams.get('realmId') ?? '',

@@ -13,6 +13,17 @@ export type ClientRealmView = Omit<RealmView, 'catalog'> & {
   catalogStatus: Record<CatalogCharacter['status'], number>;
   /** Characters referenced by owned cards, wishes, trades and spotlights. */
   characters: Record<string, CatalogCharacter>;
+  /** Series in the realm. */
+  seriesCount: number;
+  /** Series the player has at least one card of, with how many are left to collect. */
+  seriesProgress: SeriesProgress[];
+};
+export type SeriesProgress = {
+  series: string;
+  total: number;
+  owned: number;
+  /** Not owned by anyone: can still be pulled. */
+  available: number;
 };
 
 export function toClientView(view: RealmView): ClientRealmView {
@@ -23,21 +34,43 @@ export function toClientView(view: RealmView): ClientRealmView {
     for (const offer of [trade.myOffer, trade.theirOffer])
       for (const card of offer.cards) referenced.add(card.characterId);
   for (const character of view.featuredCharacters) referenced.add(character.id);
-  for (const pack of view.packs) for (const character of pack.spotlights) referenced.add(character.id);
+  for (const pack of view.packs)
+    for (const character of pack.spotlights) referenced.add(character.id);
   if (view.lastOpening?.ok)
     for (const character of view.lastOpening.characters) referenced.add(character.id);
   const { catalog, characterValues, ...rest } = view;
   const catalogStatus = { yours: 0, claimed: 0, available: 0 };
   const characters: Record<string, CatalogCharacter> = {};
+  const series = new Map<string, SeriesProgress>();
   for (const character of catalog) {
     catalogStatus[character.status]++;
     if (referenced.has(character.id)) characters[character.id] = character;
+    const entry = series.get(character.series) ?? {
+      series: character.series,
+      total: 0,
+      owned: 0,
+      available: 0,
+    };
+    entry.total++;
+    if (character.status === 'yours') entry.owned++;
+    else if (character.status === 'available') entry.available++;
+    series.set(character.series, entry);
   }
   return {
     ...rest,
     catalogSize: catalog.length,
     catalogStatus,
     characters,
+    seriesCount: series.size,
+    // Only started series: a 100,000-character roster stays a small payload.
+    seriesProgress: [...series.values()]
+      .filter((entry) => entry.owned > 0)
+      .sort(
+        (a, b) =>
+          b.owned / b.total - a.owned / a.total ||
+          b.owned - a.owned ||
+          a.series.localeCompare(b.series),
+      ),
     characterValues: Object.fromEntries(
       [...referenced]
         .filter((id) => characterValues[id] !== undefined)

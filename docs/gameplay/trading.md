@@ -9,17 +9,30 @@ Browse/search existing members by Discord username/display name with the
 [member picker](members.md), or paste a realm trade ID. Names refresh after
 verified Discord sign-in; identities and offers still use stable codes.
 
-1. Expand **Start a trade**, choose a member or paste their ID, and choose cards and/or
-   gems to give. **Browse your collection** opens a searchable visual card picker;
-   reserved cards are unavailable. Choose **Send trade offer**. The recipient initially offers nothing.
-2. The recipient opens the same realm and chooses **Refresh trades**. Either
-   player can choose **Edit my offer** and save their own side. Every actual edit
-   creates a new version and resets both confirmations.
-3. Review **You give** and **You receive**, then choose **Confirm this offer**.
-   Both players must confirm the same version. The second confirmation transfers
-   all cards and gems in one database transaction. Gifts are allowed.
-4. Either participant can **Cancel trade** while pending. Refresh to see changes
-   made by the other player; notifications and automatic polling are not implemented.
+1. Choose **New trade**, pick a member (or paste their trade ID), then fill in
+   both sides: **You give** (your cards from a searchable picker, and gems) and
+   **You get from …** (cards from their collection, and gems). Each side shows
+   its value (card values plus gems). Cards listed on the market or reserved in
+   another trade can't be chosen. **Send offer** confirms your side.
+2. The other player sees it under **Waiting for you** (after **Refresh trades**)
+   and can **Accept** (the trade completes at once, all cards and gems in one
+   database transaction), **Counter-offer** (change both sides; the counter is
+   confirmed by its author and goes back to you) or **Decline**.
+3. While an offer waits for the other player you can **Change offer** or
+   **Cancel offer**. Every change is a new version; accepting an outdated version
+   is refused. Gifts (one side empty) are allowed.
+
+Asking for someone's card never locks it: a player's cards are reserved only
+while that player has confirmed the current version (when they send, counter or
+accept). So nobody can freeze your cards by sending offers; if a requested card
+is gone or listed when the owner accepts, accepting fails and nothing moves.
+
+Trades started before this design (protocol 1) keep their rules until they end:
+each player changes only their own side (**Change my side**) and both confirm
+(**Confirm this offer**). The API keeps that protocol for `create` commands
+without a `request`; with `request` (the other player's side) a trade is a
+proposal (protocol 2, migration 0030). `GET /api/trade-partner` lists a trade
+partner's cards for the picker. History is under **History**.
 
 ## Defaults and configuration
 

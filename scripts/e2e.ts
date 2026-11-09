@@ -791,7 +791,9 @@ try {
   ).toBeEnabled();
   await impact.getByRole('button', { name: 'Apply reviewed settings', exact: true }).click();
   await expect(settings).toHaveCount(0);
-  await expect(page.getByRole('status').filter({ hasText: 'Game rules saved. Revision 2 is active.' })).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Game rules saved. Revision 2 is active.' }),
+  ).toBeVisible();
   expect((await getRealmView(db, admin, realmId)).configRevision).toBe(2);
   await adminSection(page, 'Players & access').click();
   await page.getByLabel('Discord user ID', { exact: true }).fill(discordPlayer);
@@ -887,7 +889,7 @@ try {
       await route.abort('failed');
     } else await route.fulfill({ response });
   });
-  await trades.getByText('Start a trade', { exact: true }).click();
+  await trades.getByRole('button', { name: 'New trade', exact: true }).click();
   await trades.getByLabel('Search realm members').fill('no-such-member');
   await expect(
     trades.getByText('No members found. Try another name or paste a trade ID below.', {
@@ -939,56 +941,58 @@ try {
   ).toBe(401);
   await noMemberSession.close();
   await page.unroute('**/api/members?**');
-  await trades.getByLabel('Gems you offer', { exact: true }).fill('5');
-  await trades.getByRole('button', { name: 'Browse your collection', exact: true }).click();
-  const offeredCards = page.getByRole('dialog', { name: 'Choose cards to trade', exact: true });
+  // Both sides at once: A gives a card and 5 gems and asks for B's card and 2 gems.
+  const give = trades.getByRole('region', { name: 'You give', exact: true });
+  await give.getByLabel('Gems', { exact: true }).fill('5');
+  await give.getByRole('button', { name: /^Choose cards/ }).click();
+  const offeredCards = page.getByRole('dialog', { name: 'Choose cards to give', exact: true });
   await offeredCards
     .getByRole('button', { name: `Select ${tradeBeforeA.cards[0].name}`, exact: true })
     .click();
   await offeredCards.getByRole('button', { name: 'Use 1 selected cards', exact: true }).click();
-  await trades.getByRole('button', { name: 'Send trade offer' }).click();
+  const want = trades.getByRole('region', { name: 'You get from Atlas Player', exact: true });
+  await want.getByLabel('Gems', { exact: true }).fill('2');
+  await want.getByRole('button', { name: /^Choose cards/ }).click();
+  const wantedCards = page.getByRole('dialog', {
+    name: 'Choose cards from Atlas Player',
+    exact: true,
+  });
+  await wantedCards
+    .getByRole('button', { name: `Select ${tradeBeforeB.cards[0].name}`, exact: true })
+    .click();
+  await wantedCards.getByRole('button', { name: 'Use 1 selected cards', exact: true }).click();
+  await trades.getByRole('button', { name: 'Send offer', exact: true }).click();
   await trades.getByRole('button', { name: 'Retry trade request' }).click();
-  await expect(trades.getByRole('heading', { name: 'Trade · pending', exact: true })).toBeVisible();
+  await expect(trades.getByRole('heading', { name: /^Your offer to Atlas Player/ })).toBeVisible();
   expect(tradeRequests[1]).toEqual(tradeRequests[0]);
   const tradeId = (await getRealmView(db, admin, tradeRealm)).trades[0].id;
   expect((await getRealmView(db, admin, tradeRealm)).cards[0].lockedForTrade).toBe(true);
+  // Asking for B's card doesn't lock it: only its owner's acceptance does.
+  expect((await getRealmView(db, partner, tradeRealm)).cards[0].lockedForTrade).toBe(false);
   await partnerTrades.getByRole('button', { name: 'Refresh trades' }).click();
   const theirs = partnerTrades.getByRole('article', { name: `Trade ${tradeId}` }),
     ours = trades.getByRole('article', { name: `Trade ${tradeId}` });
   await expect(ours).toContainText('Atlas Player');
-  await expect(theirs).toContainText('Atlas Admin');
-  await theirs.getByRole('button', { name: 'Edit my offer' }).click();
-  await theirs.getByLabel('Gems you offer', { exact: true }).fill('2');
-  await theirs.getByRole('button', { name: 'Browse your collection', exact: true }).click();
-  const partnerOfferedCards = partnerPage.getByRole('dialog', {
-    name: 'Choose cards to trade',
-    exact: true,
-  });
-  await partnerOfferedCards
-    .getByRole('button', { name: `Select ${tradeBeforeB.cards[0].name}`, exact: true })
-    .click();
-  await partnerOfferedCards
-    .getByRole('button', { name: 'Use 1 selected cards', exact: true })
-    .click();
-  await theirs.getByRole('button', { name: 'Save my offer' }).click();
-  await expect(theirs).toContainText('Offer version 2');
+  await expect(theirs.getByRole('heading', { name: /^Offer from Atlas Admin/ })).toBeVisible();
+  // B counters: gives 3 gems instead of 2.
+  await theirs.getByRole('button', { name: 'Counter-offer', exact: true }).click();
+  await theirs
+    .getByRole('region', { name: 'You give', exact: true })
+    .getByLabel('Gems', { exact: true })
+    .fill('3');
+  await theirs.getByRole('button', { name: 'Send counter-offer', exact: true }).click();
+  await expect(theirs).toContainText('Version 2');
+  await expect(theirs.getByRole('heading', { name: /^Your offer to Atlas Admin/ })).toBeVisible();
   await trades.getByRole('button', { name: 'Refresh trades' }).click();
-  await expect(ours).toContainText('Offer version 2');
-  await ours.getByRole('button', { name: 'Confirm this offer' }).click();
-  await expect(ours.getByRole('button', { name: 'Your confirmation saved' })).toBeDisabled();
-  await theirs.getByRole('button', { name: 'Edit my offer' }).click();
-  await theirs.getByLabel('Gems you offer', { exact: true }).fill('3');
-  await theirs.getByRole('button', { name: 'Save my offer' }).click();
-  await expect(theirs).toContainText('Offer version 3');
-  await trades.getByRole('button', { name: 'Refresh trades' }).click();
-  await expect(ours).toContainText('Offer version 3');
-  await expect(ours.getByRole('button', { name: 'Confirm this offer' })).toBeEnabled();
-  await ours.getByRole('button', { name: 'Confirm this offer' }).click();
-  await expect(ours.getByRole('button', { name: 'Your confirmation saved' })).toBeDisabled();
-  await theirs.getByRole('button', { name: 'Confirm this offer' }).click();
-  await expect(theirs.getByRole('heading', { name: 'Trade · completed' })).toBeVisible();
-  await trades.getByRole('button', { name: 'Refresh trades' }).click();
-  await expect(ours.getByRole('heading', { name: 'Trade · completed' })).toBeVisible();
+  await expect(ours).toContainText('Version 2');
+  await expect(ours.getByRole('heading', { name: /^Offer from Atlas Player/ })).toBeVisible();
+  await ours.getByRole('button', { name: 'Accept', exact: true }).click();
+  await expect(trades.getByRole('status')).toContainText('Trade completed');
+  await trades.getByRole('button', { name: /^History/ }).click();
+  await expect(ours).toContainText('completed');
+  await partnerTrades.getByRole('button', { name: 'Refresh trades' }).click();
+  await partnerTrades.getByRole('button', { name: /^History/ }).click();
+  await expect(theirs).toContainText('completed');
   const tradeAfterA = await getRealmView(db, admin, tradeRealm),
     tradeAfterB = await getRealmView(db, partner, tradeRealm);
   expect(tradeAfterA.cards[0].cardId).toBe(tradeBeforeB.cards[0].cardId);

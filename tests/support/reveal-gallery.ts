@@ -38,10 +38,12 @@ export async function assertTradingCardFaces(faces: Locator) {
 export async function assertPortraitGallery(dialog: Locator, count: number) {
   await expect(dialog.locator('.reveal-gallery')).toHaveCount(1);
   await expect(dialog.getByRole('article')).toHaveCount(count);
-  const geometry = await dialog.getByRole('article').evaluateAll((cards) => {
+  // A single-pack result keeps nearly its reveal size; galleries stay compact.
+  const maxWidth = count === 1 ? 340 : 245;
+  const geometry = await dialog.getByRole('article').evaluateAll((cards, limit) => {
     const bounds = cards.map((card) => card.getBoundingClientRect());
     return {
-      bounded: bounds.every((rect) => rect.width > 75 && rect.width <= 245),
+      bounded: bounds.every((rect) => rect.width > 75 && rect.width <= limit),
       portrait: cards.every((card) => {
         const rect = card.querySelector('.reveal-portrait')!.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0 && rect.width / rect.height < 0.91;
@@ -57,7 +59,7 @@ export async function assertPortraitGallery(dialog: Locator, count: number) {
         ),
       ),
     };
-  });
+  }, maxWidth);
   expect(geometry).toEqual({ bounded: true, portrait: true, noOverlap: true });
   await assertTradingCardFaces(dialog.locator('.reveal-gallery .card-face'));
   expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);

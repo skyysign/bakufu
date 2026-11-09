@@ -34,28 +34,42 @@ export function PullTracker({ realmId, refreshKey }: { realmId: string; refreshK
     [fresh, setFresh] = useState<Set<string>>(new Set()),
     [now, setNow] = useState(() => Date.now()),
     [failed, setFailed] = useState(false);
-  const known = useRef<Set<string> | null>(null);
-  const load = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/pulls?realmId=${encodeURIComponent(realmId)}`);
-      if (!response.ok) throw new Error();
-      const body = (await response.json()) as { pulls: PulledCard[] };
-      const previous = known.current;
-      setFresh(
-        new Set(
-          previous
-            ? body.pulls.filter((pull) => !previous.has(pull.key)).map((pull) => pull.key)
-            : [],
-        ),
-      );
-      known.current = new Set(body.pulls.map((pull) => pull.key));
-      setPulls(body.pulls);
-      setNow(Date.now());
-      setFailed(false);
-    } catch {
-      setFailed(true);
-    }
-  }, [realmId]);
+  const known = useRef<Set<string> | null>(null),
+    newest = useRef<string | null>(null);
+  // Timed polls (`quiet`) only ask whether anything newer was pulled; the full
+  // feed (with current owners and values) loads on start, on return to the tab,
+  // after your own openings and whenever a new big pull appears.
+  const load = useCallback(
+    async (quiet = false) => {
+      try {
+        const after = quiet && newest.current ? `&after=${encodeURIComponent(newest.current)}` : '';
+        const response = await fetch(`/api/pulls?realmId=${encodeURIComponent(realmId)}${after}`);
+        if (!response.ok) throw new Error();
+        const body = (await response.json()) as { pulls: PulledCard[] } | { unchanged: true };
+        if ('unchanged' in body) {
+          setNow(Date.now());
+          setFailed(false);
+          return;
+        }
+        newest.current = body.pulls[0]?.openingId ?? null;
+        const previous = known.current;
+        setFresh(
+          new Set(
+            previous
+              ? body.pulls.filter((pull) => !previous.has(pull.key)).map((pull) => pull.key)
+              : [],
+          ),
+        );
+        known.current = new Set(body.pulls.map((pull) => pull.key));
+        setPulls(body.pulls);
+        setNow(Date.now());
+        setFailed(false);
+      } catch {
+        setFailed(true);
+      }
+    },
+    [realmId],
+  );
   useEffect(() => {
     void load();
   }, [load, refreshKey]);
@@ -63,7 +77,7 @@ export function PullTracker({ realmId, refreshKey }: { realmId: string; refreshK
     let lastInput = Date.now();
     const idle = () => Date.now() - lastInput > idleAfterMs;
     const tick = window.setInterval(() => {
-      if (document.visibilityState === 'visible' && !idle()) void load();
+      if (document.visibilityState === 'visible' && !idle()) void load(true);
     }, refreshMs);
     const visible = () => {
       if (document.visibilityState === 'visible') void load();

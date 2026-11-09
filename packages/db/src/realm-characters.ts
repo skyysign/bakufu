@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import { parseRealmConfig, type RealmConfig, type Tier } from '../../config/src/index';
-import { adjustedTier, GameError } from '../../core/src/index';
+import { adjustedTier, GameError, mediumCategories } from '../../core/src/index';
 import {
   catalogEntrySchema,
-  providerArtworkSchema,
   tierForPercentile,
   standingWeights,
   tierAmongStandings,
@@ -25,6 +24,9 @@ export type RealmCharacterSummary = {
   artworkCount: number;
   /** Most common saved artwork permission, offered as the default for additions. */
   artworkPermission: string | null;
+  /** Series in the realm, and how many have no medium category (Anime, Manga, …) yet. */
+  seriesCount: number;
+  untaggedSeries: number;
 };
 export type RealmCharacterCheck = {
   results: { sourceKey: string; present: boolean; tier: Tier }[];
@@ -214,7 +216,9 @@ export async function realmCharacterSummary(
         )
       ).rows[0];
       const reason = additionBlocker(context);
+      const series = await seriesCounts(tx, realmId);
       return {
+        ...series,
         characterCount: context.characterCount,
         source: context.source,
         canAdd: !reason,
@@ -443,106 +447,59 @@ export async function addRealmCharacters(
   });
 }
 
-export type RealmArtworkGaps = {
-  source: string | null;
-  characterCount: number;
-  /** Source keys of characters that have no artwork reference yet. */
-  missing: string[];
-  /** Only MyAnimeList rosters can be matched by walking popular series. */
-  canFetch: boolean;
-};
-const artworkBackfillSchema = z.strictObject({
-  artwork: z
+async function seriesCounts(tx: Transaction, realmId: string) {
+  const row = (
+    await tx.query(
+      `SELECT count(DISTINCT series)::int AS total,
+      count(DISTINCT series) FILTER (WHERE NOT (categories && $2::text[]))::int AS untagged
+      FROM characters WHERE realm_id=$1 AND retired_at IS NULL`,
+      [realmId, [...mediumCategories]],
+    )
+  ).rows[0];
+  return { seriesCount: row.total as number, untaggedSeries: row.untagged as number };
+}
+
+const seriesTagSchema = z.strictObject({
+  tags: z
     .array(
       z.strictObject({
-        sourceKey: catalogEntrySchema.shape.sourceKey,
-        artwork: providerArtworkSchema,
+        series: z.string().trim().min(1).max(100),
+        category: z.enum(mediumCategories),
       }),
     )
     .min(1)
     .max(500),
-  rightsConfirmed: z.literal(true),
 });
-
-/** Characters of the realm that still lack an artwork reference. */
-export async function realmArtworkGaps(
-  db: Database,
-  actorId: string,
-  realmId: string,
-): Promise<RealmArtworkGaps> {
-  [actorId, realmId].forEach((value) => z.uuid().parse(value));
-  return transaction(
-    db,
-    async (tx) => {
-      const context = await catalogContext(tx, actorId, realmId, false);
-      const missing = (
-        await tx.query(
-          "SELECT source_key FROM characters WHERE realm_id=$1 AND retired_at IS NULL AND NOT (provenance ? 'artwork') ORDER BY source_key",
-          [realmId],
-        )
-      ).rows.map((row) => row.source_key as string);
-      return {
-        source: context.source,
-        characterCount: context.characterCount,
-        missing,
-        canFetch: context.source === 'mal',
-      };
-    },
-    true,
-  );
-}
-
 /**
- * Adds provider artwork references to characters that have none. Existing
- * references are never replaced; names, rarity, ownership and receipts are
- * untouched. Retrying reports the characters as already updated.
+ * Adds medium categories (Anime, Manga, Manhwa, …) to the characters of the
+ * named series, for realms imported before characters carried their medium.
+ * Only categories change: names, rarity, ownership and receipts stay as they
+ * are, and repeating a request changes nothing.
  */
-export async function backfillRealmArtwork(
+export async function tagRealmSeries(
   db: Database,
   actorId: string,
   realmId: string,
   input: unknown,
-): Promise<{ updated: number; remaining: number }> {
+): Promise<{ tagged: number; seriesTagged: number; seriesCount: number; untaggedSeries: number }> {
   [actorId, realmId].forEach((value) => z.uuid().parse(value));
-  const request = artworkBackfillSchema.parse(input);
+  const request = seriesTagSchema.parse(input);
   return transaction(db, async (tx) => {
-    const context = await catalogContext(tx, actorId, realmId, true);
-    if (!context.source || !extendableSources.has(context.source))
-      throw new GameError(
-        'CATALOG_FIXED',
-        'Artwork can be added to MyAnimeList and AniList rosters only.',
-        409,
-      );
-    if (request.artwork.some((item) => item.sourceKey.split(':')[0] !== context.source))
-      throw new GameError(
-        'CATALOG_INVALID',
-        'Artwork must come from the same source as this realm’s roster.',
-      );
-    const updated =
-      (
-        await tx.query(
-          `UPDATE characters c SET provenance=c.provenance||jsonb_build_object('artwork',x.artwork,'artworkAddedAt',$3::text)
-        FROM jsonb_to_recordset($2::jsonb) AS x(source_key text,artwork jsonb)
-        WHERE c.realm_id=$1 AND c.source_key=x.source_key AND NOT (c.provenance ? 'artwork')`,
-          [
-            realmId,
-            JSON.stringify(
-              request.artwork.map((item) => ({
-                source_key: item.sourceKey,
-                artwork: item.artwork,
-              })),
-            ),
-            new Date().toISOString(),
-          ],
-        )
-      ).rowCount ?? 0;
-    const remaining = (
+    await catalogContext(tx, actorId, realmId, true);
+    const changed = (
       await tx.query(
-        "SELECT count(*)::int AS count FROM characters WHERE realm_id=$1 AND retired_at IS NULL AND NOT (provenance ? 'artwork')",
-        [realmId],
+        `UPDATE characters c SET categories=ARRAY(SELECT DISTINCT unnest(c.categories||ARRAY[x.category]) ORDER BY 1)
+        FROM jsonb_to_recordset($2::jsonb) AS x(series text,category text)
+        WHERE c.realm_id=$1 AND c.retired_at IS NULL AND c.series=x.series AND NOT (x.category=ANY(c.categories))
+        RETURNING c.series`,
+        [realmId, JSON.stringify(request.tags)],
       )
-    ).rows[0].count as number;
-    return { updated, remaining };
+    ).rows as { series: string }[];
+    return {
+      tagged: changed.length,
+      seriesTagged: new Set(changed.map((row) => row.series)).size,
+      ...(await seriesCounts(tx, realmId)),
+    };
   });
 }
 

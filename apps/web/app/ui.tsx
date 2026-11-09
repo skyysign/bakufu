@@ -31,6 +31,7 @@ import { InspectableCard } from './card-browser';
 import { ApiError, post } from './api-client';
 import { siteName } from '../lib/brand';
 import { AdminHub } from './admin-hub';
+import { SeriesProgressList } from './series-progress';
 export function SignIn({
   discordEnabled,
   bootstrapNeeded,
@@ -298,6 +299,7 @@ export function Dashboard({
   const [collectionSearch, setCollectionSearch] = useState('');
   const [collectionTier, setCollectionTier] = useState('all');
   const [collectionSort, setCollectionSort] = useState('newest');
+  const [collectionView, setCollectionView] = useState<'cards' | 'series'>('cards');
   const [packSearch, setPackSearch] = useState('');
   const [adminMode, setAdminMode] = useState(true);
   const canAdmin = account.instanceAdmin || view?.role === 'admin';
@@ -900,145 +902,185 @@ export function Dashboard({
                   }
                 />
                 {collection.length > 0 && (
-                  <>
-                    <div className="rarity-filter" role="group" aria-label="Filter by rarity">
-                      <button
-                        type="button"
-                        className="rarity-chip all"
-                        aria-pressed={collectionTier === 'all'}
-                        onClick={() => setCollectionTier('all')}
-                      >
-                        All <span>{collection.length}</span>
-                      </button>
-                      {tiers.map((tier) => (
-                        <button
-                          type="button"
-                          key={tier}
-                          className={`rarity-chip ${tier}`}
-                          aria-pressed={collectionTier === tier}
-                          disabled={!tierCounts[tier] && collectionTier !== tier}
-                          onClick={() => setCollectionTier(collectionTier === tier ? 'all' : tier)}
-                        >
-                          {tier} <span>{tierCounts[tier]}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="collection-toolbar">
-                      <div className="search-field">
-                        <label className="sr-only" htmlFor="collection-search">
-                          Search your collection
-                        </label>
-                        <GameIcon name="search" />
-                        <input
-                          id="collection-search"
-                          type="search"
-                          value={collectionSearch}
-                          onChange={(event) => setCollectionSearch(event.target.value)}
-                          placeholder="Search characters or series"
-                        />
-                      </div>
-                      <div>
-                        <label className="sr-only" htmlFor="collection-sort">
-                          Sort your collection
-                        </label>
-                        <select
-                          id="collection-sort"
-                          value={collectionSort}
-                          onChange={(event) => setCollectionSort(event.target.value)}
-                        >
-                          <option value="newest">Recently collected</option>
-                          <option value="rarity">Rarest first</option>
-                          <option value="value">Highest value</option>
-                          <option value="name">Name A–Z</option>
-                        </select>
-                      </div>
-                    </div>
-                  </>
+                  <div
+                    className="segmented collection-view-toggle"
+                    role="group"
+                    aria-label="Show collection as"
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={collectionView === 'cards'}
+                      onClick={() => setCollectionView('cards')}
+                    >
+                      Cards
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={collectionView === 'series'}
+                      onClick={() => setCollectionView('series')}
+                    >
+                      Series ({view.seriesProgress.length.toLocaleString()})
+                    </button>
+                  </div>
                 )}
-                {collection.length ? (
+                {collectionView === 'series' && collection.length > 0 ? (
+                  <SeriesProgressList
+                    progress={view.seriesProgress}
+                    seriesCount={view.seriesCount}
+                    onOpen={(series) => {
+                      setCollectionSearch(series);
+                      setCollectionTier('all');
+                      setCollectionView('cards');
+                    }}
+                  />
+                ) : (
                   <>
-                    <div className="collection-grid">
-                      {filteredCollection.map((card) => {
-                        const valuation = view.characterValues[card.id];
-                        const reward = valuation.recycleValue;
-                        const recovering = pendingRecycle?.cardId === card.cardId;
-                        return (
-                          <article
-                            className={`character collection-card ${card.tier}`}
-                            key={card.cardId}
+                    {collection.length > 0 && (
+                      <>
+                        <div className="rarity-filter" role="group" aria-label="Filter by rarity">
+                          <button
+                            type="button"
+                            className="rarity-chip all"
+                            aria-pressed={collectionTier === 'all'}
+                            onClick={() => setCollectionTier('all')}
                           >
-                            <InspectableCard
-                              card={{ ...card, valuation }}
-                              value={valuation.marketValue}
-                            />
+                            All <span>{collection.length}</span>
+                          </button>
+                          {tiers.map((tier) => (
                             <button
-                              className="secondary wide recycle-button"
-                              aria-label={
-                                recovering
-                                  ? 'Retry recycling'
-                                  : card.listedForSale
-                                    ? `${card.name} listed on market`
-                                    : card.lockedForTrade
-                                      ? `${card.name} reserved in a trade`
-                                      : `Recycle ${card.name} for ${reward} gems`
+                              type="button"
+                              key={tier}
+                              className={`rarity-chip ${tier}`}
+                              aria-pressed={collectionTier === tier}
+                              disabled={!tierCounts[tier] && collectionTier !== tier}
+                              onClick={() =>
+                                setCollectionTier(collectionTier === tier ? 'all' : tier)
                               }
-                              disabled={
-                                !!busy ||
-                                !!pending ||
-                                (!!pendingRecycle && !recovering) ||
-                                !!pendingWish ||
-                                settingsBusy ||
-                                rankBusy ||
-                                marketBusy ||
-                                tradeBusy ||
-                                card.lockedForTrade ||
-                                card.listedForSale ||
-                                recyclingReceipt?.cardId === card.cardId
-                              }
-                              onClick={() => void recycle(card.cardId)}
                             >
-                              {busy === `recycle:${card.cardId}` ? (
-                                'Recycling…'
-                              ) : recovering ? (
-                                'Retry recycling'
-                              ) : card.listedForSale ? (
-                                <>
-                                  <GameIcon name="tag" /> Listed on market
-                                </>
-                              ) : card.lockedForTrade ? (
-                                <>
-                                  <GameIcon name="lock" /> In a trade
-                                </>
-                              ) : (
-                                <>
-                                  <GameIcon name="recycle" />
-                                  Recycle
-                                  <span className="recycle-reward">+{reward.toLocaleString()}</span>
-                                </>
-                              )}
+                              {tier} <span>{tierCounts[tier]}</span>
                             </button>
-                          </article>
-                        );
-                      })}
-                    </div>
-                    {filteredCollection.length === 0 && (
-                      <div className="empty">
-                        <h3>No matching cards.</h3>
-                        <p className="quiet">Try a different name, series or rarity.</p>
+                          ))}
+                        </div>
+                        <div className="collection-toolbar">
+                          <div className="search-field">
+                            <label className="sr-only" htmlFor="collection-search">
+                              Search your collection
+                            </label>
+                            <GameIcon name="search" />
+                            <input
+                              id="collection-search"
+                              type="search"
+                              value={collectionSearch}
+                              onChange={(event) => setCollectionSearch(event.target.value)}
+                              placeholder="Search characters or series"
+                            />
+                          </div>
+                          <div>
+                            <label className="sr-only" htmlFor="collection-sort">
+                              Sort your collection
+                            </label>
+                            <select
+                              id="collection-sort"
+                              value={collectionSort}
+                              onChange={(event) => setCollectionSort(event.target.value)}
+                            >
+                              <option value="newest">Recently collected</option>
+                              <option value="rarity">Rarest first</option>
+                              <option value="value">Highest value</option>
+                              <option value="name">Name A–Z</option>
+                            </select>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    {collection.length ? (
+                      <>
+                        <div className="collection-grid">
+                          {filteredCollection.map((card) => {
+                            const valuation = view.characterValues[card.id];
+                            const reward = valuation.recycleValue;
+                            const recovering = pendingRecycle?.cardId === card.cardId;
+                            return (
+                              <article
+                                className={`character collection-card ${card.tier}`}
+                                key={card.cardId}
+                              >
+                                <InspectableCard
+                                  card={{ ...card, valuation }}
+                                  value={valuation.marketValue}
+                                />
+                                <button
+                                  className="secondary wide recycle-button"
+                                  aria-label={
+                                    recovering
+                                      ? 'Retry recycling'
+                                      : card.listedForSale
+                                        ? `${card.name} listed on market`
+                                        : card.lockedForTrade
+                                          ? `${card.name} reserved in a trade`
+                                          : `Recycle ${card.name} for ${reward} gems`
+                                  }
+                                  disabled={
+                                    !!busy ||
+                                    !!pending ||
+                                    (!!pendingRecycle && !recovering) ||
+                                    !!pendingWish ||
+                                    settingsBusy ||
+                                    rankBusy ||
+                                    marketBusy ||
+                                    tradeBusy ||
+                                    card.lockedForTrade ||
+                                    card.listedForSale ||
+                                    recyclingReceipt?.cardId === card.cardId
+                                  }
+                                  onClick={() => void recycle(card.cardId)}
+                                >
+                                  {busy === `recycle:${card.cardId}` ? (
+                                    'Recycling…'
+                                  ) : recovering ? (
+                                    'Retry recycling'
+                                  ) : card.listedForSale ? (
+                                    <>
+                                      <GameIcon name="tag" /> Listed on market
+                                    </>
+                                  ) : card.lockedForTrade ? (
+                                    <>
+                                      <GameIcon name="lock" /> In a trade
+                                    </>
+                                  ) : (
+                                    <>
+                                      <GameIcon name="recycle" />
+                                      Recycle
+                                      <span className="recycle-reward">
+                                        +{reward.toLocaleString()}
+                                      </span>
+                                    </>
+                                  )}
+                                </button>
+                              </article>
+                            );
+                          })}
+                        </div>
+                        {filteredCollection.length === 0 && (
+                          <div className="empty">
+                            <h3>No matching cards.</h3>
+                            <p className="quiet">Try a different name, series or rarity.</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="empty panel">
+                        <span className="empty-icon" aria-hidden="true">
+                          <GameIcon name="collection" />
+                        </span>
+                        <h3>Your next discovery is waiting.</h3>
+                        <p className="quiet">Open a pack to meet your first character.</p>
+                        <Link className="button" href={screenHref('packs', view.id)} scroll={false}>
+                          Browse packs
+                        </Link>
                       </div>
                     )}
                   </>
-                ) : (
-                  <div className="empty panel">
-                    <span className="empty-icon" aria-hidden="true">
-                      <GameIcon name="collection" />
-                    </span>
-                    <h3>Your next discovery is waiting.</h3>
-                    <p className="quiet">Open a pack to meet your first character.</p>
-                    <Link className="button" href={screenHref('packs', view.id)} scroll={false}>
-                      Browse packs
-                    </Link>
-                  </div>
                 )}
               </section>
             )}

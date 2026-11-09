@@ -483,7 +483,9 @@ export function PackReveal({
             </p>
           )}
           <div
-            className="reveal-summary reveal-gallery"
+            className={`reveal-summary reveal-gallery${
+              receipt.characters.length === 1 ? ' reveal-gallery-single' : ''
+            }`}
             aria-label="All revealed cards"
             style={
               {

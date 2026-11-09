@@ -16,6 +16,7 @@ import {
   realmCharacterSummary,
   removeCharacters,
   setWishlistEntry,
+  tagRealmSeries,
   transaction,
   type Database,
 } from '../../packages/db/src/index';
@@ -177,7 +178,12 @@ describe('removing characters', () => {
     const retired = new Set(after.filter((c) => c.retired_at).map((c) => c.id));
     const more = await openPack(db, r.player, r.realm, r.pack, randomUUID(), r.revision, 10);
     if (more.ok) expect(more.characters.some((c) => retired.has(c.id))).toBe(false);
-    else expect(more.code).toBe('POOL_EXHAUSTED');
+    else {
+      // The random fixture openings can leave fewer than 10 unclaimed characters.
+      expect(more.code).toBe('EMPTY_POOL');
+      const unclaimed = (await characters(r.realm)).filter((c) => !c.retired_at && !c.card_id);
+      expect(unclaimed.length).toBeLessThan(10);
+    }
 
     // Retry replays; a different review with the same key conflicts.
     await expect(
@@ -307,5 +313,43 @@ describe('removing characters', () => {
         throw rollback;
       }),
     ).rejects.toBe(rollback);
+  });
+});
+
+describe('tagging series by medium', () => {
+  it('adds medium categories to whole series, once, for catalog admins only', async () => {
+    const r = await setup();
+    expect(await realmCharacterSummary(db, admin, r.realm)).toMatchObject({
+      seriesCount: 4,
+      untaggedSeries: 4,
+    });
+    const tags = [
+      { series: 'Original Saga 0', category: 'Anime' },
+      { series: 'Original Saga 1', category: 'Manga' },
+      { series: 'No Such Series', category: 'Manhwa' },
+    ];
+    const result = await tagRealmSeries(db, admin, r.realm, { tags });
+    expect(result).toMatchObject({
+      tagged: 20,
+      seriesTagged: 2,
+      seriesCount: 4,
+      untaggedSeries: 2,
+    });
+    expect((await tagRealmSeries(db, admin, r.realm, { tags })).tagged).toBe(0);
+    const anime = (
+      await db.query(
+        "SELECT count(*)::int AS count FROM characters WHERE realm_id=$1 AND 'Anime'=ANY(categories)",
+        [r.realm],
+      )
+    ).rows[0].count;
+    expect(anime).toBe(10);
+    await expect(tagRealmSeries(db, r.player, r.realm, { tags: [tags[0]] })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(
+      tagRealmSeries(db, admin, r.realm, {
+        tags: [{ series: 'Original Saga 2', category: 'Action' }],
+      }),
+    ).rejects.toThrow();
   });
 });

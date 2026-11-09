@@ -125,6 +125,15 @@ export async function verifyRosterTools(
         title: `Original Long Voyage ${i}`,
         categories: ['Adventure'],
       }));
+      // Medium tagging reads the series lists only: every realm series is on them.
+      if (body.revision === 'realm-medium-tags-1')
+        works.push(
+          ...[0, 1, 2, 3].map((i) => ({
+            id: 981000000 + i,
+            title: `Original Voyage ${i}`,
+            categories: ['Adventure'],
+          })),
+        );
       await route.fulfill({
         json:
           body.step === 'works'
@@ -172,10 +181,27 @@ export async function verifyRosterTools(
       )
     ).rows[0].count;
     expect(grown).toBe(12);
+    // Characters imported before medium categories get them from the series lists.
+    const tagging = page.getByRole('region', { name: 'Tag series by medium', exact: true });
+    await tagging.getByRole('button', { name: 'Tag series', exact: true }).click();
+    await expect(tagging.getByRole('status')).toContainText('Done: every series has a medium', {
+      timeout: 30_000,
+    });
+    expect(
+      (
+        await db.query(
+          "SELECT count(*)::int AS count FROM characters WHERE realm_id=$1 AND NOT ('Anime'=ANY(categories))",
+          [realm],
+        )
+      ).rows[0].count,
+    ).toBe(0);
     await page.unroute('**/api/catalog/provider');
 
     // Remove every character without a picture (20 original + 12 new).
-    const removal = page.getByRole('region', { name: 'Remove characters', exact: true });
+    const removal = page.getByRole('region', {
+      name: 'Remove characters without a picture',
+      exact: true,
+    });
     await expect(removal).toContainText('32 characters have no picture.');
     await removal
       .getByRole('button', { name: 'Remove all without a picture…', exact: true })
@@ -198,6 +224,34 @@ export async function verifyRosterTools(
         )
       ).rows[0].count,
     ).toBe(32);
+
+    // A single-pack result keeps nearly its reveal size, with the Recycle button below.
+    await page.setViewportSize({ width: 1280, height: 960 });
+    await page.goto(`${origin}/packs?realm=${realm}&pack=${pack.id}`);
+    await page
+      .getByRole('group', { name: 'Packs per opening' })
+      .getByRole('button', { name: '1 pack', exact: true })
+      .click();
+    await detail.getByRole('button', { name: /^Open pack/ }).click();
+    const one = reveal.locator('.reveal-card');
+    await expect(one).toHaveCount(1);
+    const width = (await one.boundingBox())!.width;
+    expect(width).toBeGreaterThan(245);
+    await expect(one.getByRole('button', { name: /^Recycle / })).toBeVisible();
+    await page.screenshot({ path: '.test-data/opening-single-result-desktop.png' });
+    const single = (await getRealmView(db, admin, realm)).cards[0];
+
+    // Collection → Series: progress per series, and a series opens its cards.
+    await page.goto(`${origin}/collection?realm=${realm}`);
+    await page
+      .getByRole('group', { name: 'Show collection as' })
+      .getByRole('button', { name: /^Series/ })
+      .click();
+    const series = page.getByRole('region', { name: 'Series', exact: true });
+    await expect(series).toContainText('You have cards from 1 of');
+    await series.getByRole('button', { name: /collected\. Show these cards$/ }).click();
+    await expect(page.locator('#collection-search')).toHaveValue(single.series);
+    await expect(page.locator('.collection-card')).toHaveCount(1);
   } finally {
     await context.close();
   }
