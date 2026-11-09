@@ -198,8 +198,8 @@ known without retroactive awards. XP remains scoped to each player and realm.
 **Ranks** shows current XP, the next threshold and the award rule. The
 prototype defaults stop at level 5 (100 XP); XP keeps accumulating at that cap.
 Admins can extend the threshold list through reviewed progression settings.
-See [XP and level rules](gameplay/progression.md) for configuration and
-milestone details. The separate XP-gated pack-discount shop is retired; older
+See [XP and level rules](gameplay/progression.md) for configuration
+details. The separate XP-gated pack-discount shop is retired; older
 purchased benefits and receipts remain preserved. **Your wishlist** has three
 slots by default and gives wished characters 2× selection weight within their
 rarity tier, preserving rarity odds. The UI shows actual next-draw chances;
@@ -219,8 +219,8 @@ slots are protected; stale pages cannot spend at unexpected new prices. See
 and gems after both confirm the same offer. Search existing realm members by Discord name or share a realm trade ID to start;
 offered cards are reserved, edits reset confirmations, and offers expire after
 24 hours by default. See [trading rules](gameplay/trading.md). Realm admins can enable a [verified Discord server join link](gameplay/admission.md), while existing players retain their progress and access. Trade partners can now be found through the private [member search](gameplay/members.md). The optional [Discord pack commands](deployment/discord-gameplay.md) now share the web inventory and use a confirmation before spending. See
-[recycling rules and validation](gameplay/recycling.md) for Milestone 2A,
-its defaults (2/4/6 gems), schema migration, and remaining limits.
+[recycling rules and validation](gameplay/recycling.md) for its defaults,
+schema migration and remaining limits.
 
 For the Docker reference quickstart, copy `.env.example` to `.env`, replace the
 example database password in both fields with the same long URL-safe value,
@@ -266,7 +266,7 @@ pnpm test:e2e
 The integration suite starts real disposable PostgreSQL; the browser suite
 uses a production build and a separate disposable database. It uses Edge on
 Windows, or installed Playwright Chromium elsewhere. Neither suite connects to
-your live database or external character APIs. See the [run guide](deployment/quickstart.md),
+your live database or external character APIs. See the [self-hosting guide](deployment/quickstart.md),
 [backup/restore guide](deployment/backups.md), [architecture decision](architecture/0001-realm-transactions.md),
 [catalog format](content/catalog.md), [starter pack selection](content/starter-packs.md), [pack reveals](gameplay/pack-reveals.md), [privacy limitations](privacy.md),
 [optional scheduled backups](deployment/scheduled-backups.md),

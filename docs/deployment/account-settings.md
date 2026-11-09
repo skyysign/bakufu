@@ -1,4 +1,4 @@
-# Changing your local password (Milestone 5F)
+# Changing your local password
 
 Sign in and choose **Account settings** in the main navigation to open `/account`. Enter your
 current password, a new password of **12 to 256 characters**, and its confirmation.

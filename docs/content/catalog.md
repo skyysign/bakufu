@@ -46,7 +46,7 @@ near-duplicates, and takes at most 10 (or the configured lower limit).
 `All Characters` is added separately when the catalog meets the minimum.
 The demo yields five categories plus this fallback. Ownership spans all packs.
 
-## Create a realm with original JSON (Milestone 5A)
+## Create a realm with original JSON
 
 Sign in as an **instance administrator**, open **Administration → New realm**,
 and select **Your JSON file** under **Content for this new realm**.
@@ -126,7 +126,7 @@ installed definitions and ownership remain realm-scoped.
 Creation does not replace or merge a live realm's catalog. Revisions/merges,
 manual tiers and live pack editing remain planned. Selected metadata adapters
 and an original scale catalog are available through the [provider pipeline](providers.md). Realm
-creation now uses a durable retry receipt (Milestone 5E), for demo, JSON and CSV
+creation uses a durable retry receipt for demo, JSON and CSV
 catalogs. After an ambiguous failure, keep the page open and choose **Retry realm
 creation**. The same proposal/key returns the original realm without another
 starting grant, import or pack installation; fields stay locked until resolved.
@@ -137,7 +137,7 @@ may omit it and then have no retry guarantee. Reloading loses the browser's
 pending proposal/key, so check the realm list before starting a new creation.
 
 
-## Original CSV catalogs (Milestone 5B)
+## Original CSV catalogs
 
 CSV is an alternative way to create a **new** realm with your original content.
 No provider, artwork, spreadsheet account, or additional environment setting is
@@ -219,7 +219,7 @@ editing, additional filter types and live merges remain future work. See the
 ## Choose starter categories and names
 
 JSON, CSV, and the demo all support [reviewed starter pack selection](starter-packs.md)
-when creating a new realm (Milestone 5C). First preview the catalog to load its
+when creating a new realm. First preview the catalog to load its
 category counts, then choose automatic selection or select/rename categories,
 and preview the revised proposal. All Characters is always included. File/type
 changes reset selection; metadata edits retain it but invalidate the review.

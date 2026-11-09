@@ -55,7 +55,7 @@ exactly one owner. Bakufu is self-hosted, so your community owns its data.
 
 Without Discord, create a local admin with `docker compose exec web pnpm bootstrap`
 and players with `docker compose exec web pnpm player:create`. More detail:
-[run guide](docs/deployment/quickstart.md).
+[self-hosting guide](docs/deployment/quickstart.md).
 
 ## Hosting
 
@@ -76,7 +76,7 @@ Back up before every update: [backups](docs/deployment/backups.md),
 
 ## Documentation
 
-- **Setup:** [run guide](docs/deployment/quickstart.md),
+- **Setup:** [self-hosting with Docker](docs/deployment/quickstart.md),
   [Discord sign-in](docs/deployment/discord-login.md),
   [Discord commands](docs/deployment/discord-gameplay.md),
   [account settings](docs/deployment/account-settings.md),

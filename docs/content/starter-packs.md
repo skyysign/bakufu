@@ -1,4 +1,4 @@
-# Starter pack selection (Milestone 5C)
+# Starter pack selection
 
 An instance administrator can choose category packs and their display names when
 creating a **new realm**, using the original demo, original JSON, or original CSV.

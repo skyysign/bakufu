@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { db } from '../../../lib/server';
 import { discordSettings, discordErrors } from '../../../lib/discord';
 import { JoinRealm } from '../../join-realm';
+import { siteName } from '../../../lib/brand';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Join a realm',
@@ -31,7 +32,7 @@ export default async function JoinPage({
   return (
     <main id="main" className="shell">
       <a className="brand" href="/">
-        Card Engine
+        {siteName}
       </a>
       {target ? (
         <JoinRealm

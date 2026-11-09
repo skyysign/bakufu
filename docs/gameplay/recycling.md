@@ -1,4 +1,4 @@
-# Milestone 2A: recycling cards
+# Recycling cards
 
 In **Your collection**, clicking **Recycle** acts immediately at the displayed
 estimate, with no second confirmation. A successful recycle removes that card

@@ -49,14 +49,14 @@ database. Server-side JSON preserves timestamp microseconds. Backups include
 private authentication hashes but exclude sessions, and must stay outside the
 repository with operator-controlled retention. Standard PostgreSQL dump/restore
 is documented as an additional operator option, not the tested recovery path.
-Scheduling, offsite storage, portable full-realm JSON, trading, and Discord
-gameplay commands remain later milestones. Recycling and Discord website login
-are covered by the follow-ups below.
+Scheduling, offsite storage, trading and Discord gameplay commands were added
+later (sections below); portable full-realm JSON is not built yet. Recycling and
+Discord website login are covered below as well.
 
 References: [PostgreSQL row locking](https://www.postgresql.org/docs/17/explicit-locking.html),
 [Next.js installation](https://nextjs.org/docs/app/getting-started/installation).
 
-## Authentication follow-up: optional Discord login
+## Discord login
 
 Local login remains supported. An optional OAuth adapter requests `identify`
 only, uses S256 PKCE and one-time browser-bound state, validates the issuer,
@@ -70,9 +70,10 @@ Provider tokens are discarded. Linked IDs are encrypted in instance backups;
 OAuth flow state and sessions are excluded. The additive migration preserves
 existing account and gameplay IDs. Session cookies use SameSite=Lax so the
 provider return navigation succeeds, with Origin checks on form/API mutations.
-Discord pack commands and signature verification were added in Milestone 3B below.
+Discord pack commands and signature verification were added later (see
+**Signed Discord pack commands** below).
 
-## Milestone 2A: recycling
+## Recycling
 
 Recycling uses the same realm-row transaction lock as opening packs. It checks
 membership and current card ownership, replays an existing receipt before
@@ -105,7 +106,7 @@ revisions are rejected. No XP or upgrades are awarded here.
 
 Reference: [PostgreSQL partial unique indexes](https://www.postgresql.org/docs/18/indexes-partial.html).
 
-## Milestone 2B: XP and levels
+## XP and levels
 
 Configuration v3 adds XP per first collection (default 10) and cumulative level
 thresholds (default 0,20,40,70,100). Level is derived from total XP and the realm
@@ -132,7 +133,7 @@ missing XP histories or rule settings. Restore verifies XP totals, event/card
 references, and first-collection coverage in addition to wallet/recycling checks.
 Admin settings overrides are exposed at realm creation; live editing is deferred.
 
-## Milestone 2C: purchasable pack discounts
+## Purchasable pack discounts
 
 Configuration v4 adds a bounded rank list for `pack_discount`. Defaults are
 rank 1 at level 2 for 10 gems (1 gem off) and rank 2 at level 3 for 20 gems
@@ -158,7 +159,7 @@ player archives include purchase history and upgrade rules. Instance backups
 preserve purchases and verify contiguous ranks, receipts, policy snapshots,
 and debit reconciliation. Older snapshots restore with no purchases.
 
-## Milestone 2D: wishlists and targeting
+## Wishlists and targeting
 
 Configuration v5 adds wishlist slots (default 3, range 0–20) and an integer
 within-tier weight multiplier (default 2, range 1–10). Rarity selection retains
@@ -184,7 +185,7 @@ Legacy opening receipts are untouched. Old databases/backups gain default rules
 and empty lists. Current player archives preserve personal entries and rules;
 instance backups also preserve change receipts and validate capacity/identity.
 
-## Milestone 2E: reviewed live realm settings
+## Reviewed live realm settings
 
 Realm admins can preview and apply validated v5 gameplay rules. Prices, sizes,
 starting grants for future members, cooldowns, weights, recycling/XP rewards,
@@ -206,7 +207,7 @@ apply an old preview twice. Preview records are transient and excluded from
 backups; versioned configuration audit history is preserved and validated on
 fresh restore. Player archives remain v5 and reflect current public rules.
 
-## Milestone 3A: two-party trades
+## Two-party trades
 
 Trades are private to their two realm members, addressed through shareable,
 realm-specific trade codes rather than account emails or provider IDs. Each
@@ -230,7 +231,7 @@ Player archive v6 and instance backups preserve trade state and transfer history
 old data migrates without transfers or balance changes. Settings audit snapshots
 are compared through explicit config migrations rather than rewritten.
 
-## Milestone 3B: signed Discord pack commands
+## Signed Discord pack commands
 
 The optional HTTP adapter verifies Ed25519 signatures over timestamp plus raw
 request bytes, checks timestamp freshness and application ID, then maps a
@@ -256,7 +257,7 @@ Server bindings survive encrypted recovery; transient quotes do not. Config and
 player archive versions remain v6. Server-membership admission and member-name
 lookup remain separate follow-ups.
 
-## Milestone 3C: private realm member search
+## Private realm member search
 
 Cache only Discord username/display name from verified OAuth `/users/@me`,
 after resolving an existing invitation/link or the configured first admin.
@@ -278,7 +279,7 @@ other members' names are not copied into personal archives. Encrypted backups
 preserve profile names and refresh timestamps; earlier snapshots have no invented
 names. Realm configuration remains v6. Server-based admission remains deferred.
 
-## Milestone 3D: explicit Discord server admission
+## Explicit Discord server admission
 
 Invite-only remains the default. A realm admin can enable a join link for the
 realm's linked Discord server; explicit operator/account invitations remain
@@ -304,7 +305,7 @@ before changing its linked server. Backups preserve policy/audit/admission rows;
 OAuth state and proofs stay transient. Config remains v6; personal archive v8
 adds only the player's own server-admission receipt, with legacy readers intact.
 
-## Milestone 4A: independent scheduled snapshot jobs
+## Independent scheduled snapshot jobs
 
 Keep the existing encrypted snapshot/restore format and repeatable-read capture.
 The optional worker runs outside HTTP handlers, using a versioned deployment
@@ -338,7 +339,7 @@ staleness. Monitoring/alerts are a host responsibility. Authentication of a file
 does not establish restore correctness: integration tests restore a scheduled
 snapshot into a fresh database and compare stable player exports.
 
-## Milestone 4B: opt-in automated restore checks
+## Opt-in automated restore checks
 
 Run restore drills independently of the game and backup capture. The verifier
 reads an existing encrypted snapshot and uses only a separately configured
@@ -364,7 +365,7 @@ checks preserve the last successful timestamp but remain unhealthy. This checks
 the chosen destination and release, not disaster access to an offsite mount,
 operator secrets, or the running website. No drill runs without explicit setup.
 
-## Milestone 4C: portable HTTPS deployment and health
+## Portable HTTPS deployment and health
 
 Keep the base localhost deployment. An optional Compose overlay adds Caddy and
 an offline settings check before public ports start. Require one DNS hostname,
@@ -383,7 +384,7 @@ drop request objects to avoid disclosing failed OAuth callback query strings.
 Test the proxy on an isolated network with a local certificate authority.
 Public DNS, ACME, hosting, and firewall changes remain operator deployment steps.
 
-## Milestone 4D: optional encrypted offsite copies
+## Optional encrypted offsite copies
 
 Keep capture and local retention unchanged. A separate opt-in job copies retained
 encrypted generations to an explicitly initialized S3-compatible namespace.
@@ -406,7 +407,7 @@ fixture and restore downloaded data into fresh PostgreSQL. Real storage accounts
 provider compatibility, billing, and disaster access require operator setup.
 
 
-## Milestone 4E: independent durable backup alerts
+## Independent durable backup alerts
 
 Read only generic capture/restore/offsite proofs with no game database connection.
 Persist observations and a bounded FIFO outbox in a private local SQLite file
@@ -427,7 +428,7 @@ not backup success. External supervision must detect a stopped monitor. This
 adapter is opt-in and automated tests deliver only to fixtures.
 
 
-## Milestone 5A: reviewed original catalogs at realm creation
+## Reviewed original catalogs at realm creation
 
 Reuse JSON catalog v1 and the existing realm-scoped character/provenance schema.
 Preview and installation share deterministic validation, tiering, pack generation,
@@ -449,7 +450,7 @@ creation still has no retry receipt, so ambiguous outcomes require checking the
 realm list before retrying. Economy operations keep existing idempotency.
 
 
-## Milestone 5B: original CSV catalogs at realm creation
+## Original CSV catalogs at realm creation
 
 Add a bounded CSV adapter before the existing JSON v1 validator. Require explicit
 comma-separated columns, stable UUID/source keys, pipe-separated categories, and
@@ -468,7 +469,7 @@ No new gameplay state or migration is required. Initial installs only; no live
 catalog merges, remote calls, artwork, or automatic retry after uncertain creation.
 
 
-## Milestone 5C: reviewed starter pack selection for new realms
+## Reviewed starter pack selection for new realms
 
 Use a separate version 1 creation plan for explicit category packs and display
 names. Omitted plans retain the existing automatic ranking/near-duplicate logic.
@@ -488,7 +489,7 @@ No migration, new dependency, or realm config version is needed. Series,
 combined-category, hand-picked filters, and live editing remain later slices.
 
 
-## Milestone 5D: receipt-driven web pack reveals
+## Receipt-driven web pack reveals
 
 Start presentation only from a successful opening response. The existing shared
 transaction, random draw, authorization, and retry key remain authoritative.
@@ -509,7 +510,7 @@ rule, schema, backup format, or hosting dependency. Verify with real fixture HTT
 openings, lost-response retries, multi-card packs, keyboard/mobile, and motion tests.
 
 
-## Milestone 5E: realm creation retry receipts
+## Realm creation retry receipts
 
 HTTP realm creation requires a client UUID retained with the complete reviewed
 proposal after an uncertain response. Authorize instance-admin access, normalize
@@ -526,7 +527,7 @@ migration from 0011, interrupted/retried/concurrent creations, and recovery in a
 fresh database. Browser pending proposals remain only in page memory and cannot
 be edited until their result is resolved. Reloads require checking the realm list.
 
-## Milestone 5F: local password changes and session revocation
+## Local password changes and session revocation
 
 Require a valid current session, current password, and expected password revision.
 Serialize changes on the account, increment a revision, update the existing scrypt
@@ -671,7 +672,7 @@ category pools and positive rarity weights as drawing; incomplete packs and
 active claims are excluded. Stable source-qualified identities and the active
 ownership constraint apply equally to provider and original characters.
 
-The original Milestone 5D no-sound presentation choice is superseded by optional
+The original no-sound reveal presentation is superseded by optional
 original Web Audio scores. Only a user gesture can unlock them, a versioned
 browser-local mute preference contains no player identifiers, and every cue
 belongs to the actual saved rarity. Skip, close, backgrounding and reduced motion

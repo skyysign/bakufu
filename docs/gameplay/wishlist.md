@@ -1,4 +1,4 @@
-# Milestone 2D: wishlist management and targeting
+# Wishlist and targeting
 
 **Your wishlist** lets each player choose characters they hope to collect within
 one realm. Search the catalog, choose a character, and select **Add to wishlist**.

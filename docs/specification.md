@@ -1,8 +1,7 @@
 # Product specification
 
-The original product intent and roadmap for Bakufu (written when the project was
-still called Card Engine). It describes the intended behavior, including
-milestones that are not built yet; [implementation status](implementation-status.md)
+How Bakufu is meant to behave, including features that are not built yet (see
+the [roadmap](#9-roadmap)). [Implementation status](implementation-status.md)
 says what actually works.
 
 ## 1. The idea
@@ -194,57 +193,27 @@ docs/
 8. Changing settings cannot silently corrupt or invalidate existing inventories.
 9. Backups are portable and demonstrably restorable.
 
-## 9. Proposed MVP (deliver vertical slices, not every feature at once)
+## 9. Roadmap
 
-**Milestone 0 — Foundation**
-- Repo structure, README/AGENTS, `.env.example`, Docker Compose, PostgreSQL, migrations, test/lint/typecheck commands, original demo catalog.
-- A working local quickstart, plus an `architecture/decisions` note covering world/realm scoping and unique ownership.
+What is built is listed in [implementation status](implementation-status.md)
+and the [changelog](../CHANGELOG.md). Not built yet:
 
-**Milestone 1 — Playable web slice**
-- Private admin bootstrap, one web realm, demo import, 10 auto-generated packs (or fewer if demo data lacks categories), default tiering, one pack-opening operation, inventory, a basic responsive UI.
-- Transactional unique-claim enforcement and gem debits; proof via concurrent request test.
+- A guided setup (installer or admin GUI) and a prebuilt Docker image, so
+  self-hosters can run and configure Bakufu without working from the source.
+- Live catalog editing (merging or replacing a realm's catalog), pack editing
+  beyond adding and removing category packs, and ownership-mode changes such as
+  Casual duplicate ownership.
+- More Discord commands: trading, recycling, wishlists and gem claims (today:
+  status, packs and confirmed openings).
+- Dated market-price charts and valuation history.
+- Account deletion, continued Discord server membership checks, full-realm JSON
+  import/export and automated retention for remote backups.
+- More approved anime/manga providers.
 
-**Milestone 2 — Economy + progression**
-- Recycling for gems, level/XP, purchasable upgrades, cooldowns and wishlist. Configurable presets and admin settings.
-- Current status: recycling, XP/levels, purchasable pack discounts, private wishlists/targeting, cooldowns, and reviewed live realm settings are implemented. Other upgrade effects, ownership-mode changes, and pack regeneration remain planned.
+Changes to values or rules must keep ownership, stable IDs, historical receipts
+and separate rarity decisions intact.
 
-**Milestone 3 — Social play**
-- Two-party trades, permissions, Discord HTTP interactions adapter, identity linking; web and Discord must operate on the same realm and inventory.
-- Current status: web card/gem trading with both confirmations, reservations, safe retries, transfer history, and backup recovery is implemented (3A). Optional OAuth linking already works. Signed private status/pack-list/confirmed-opening commands and realm-admin server linking are implemented (3B). Other Discord gameplay commands remain planned.
-- Member lookup (3C) is implemented: browse/search existing realm members by cached Discord username/display name, choose an explicit recipient, and retain stable realm codes behind names. Refresh names through Discord sign-in. See [member search](gameplay/members.md).
-- Server joining (3D) is implemented: realm admins may share a join link for freshly verified members of the linked Discord server. Invitation-only remains the default; explicit account invitations and web-only realms stay supported. Joining does not continuously revoke existing memberships after a player leaves Discord. See [realm admission](gameplay/admission.md).
-
-**Milestone 4 — Preservation + deployment**
-- Player export, admin export, automated off-site backup adapter, documented restore, cloud deployment example independent of vendor-specific core code.
-- Current status: player archives, encrypted instance snapshots, fresh-database restores, optional scheduled backups to a mounted local/remote destination with daily/weekly retention and health (4A), weekly isolated fresh-database restore checks (4B), an optional HTTPS reverse proxy with health probes and a generic Linux/VPS guide (4C), and verified encrypted copying/downloads to an S3-compatible bucket (4D) are implemented. Optional independent failure/recovery webhook alerts (4E) are implemented; automated remote retention remains planned. Public DNS, certificates, and remote deployment require operator setup. See [scheduled backups](deployment/scheduled-backups.md), [restore checks](deployment/restore-checks.md), [HTTPS deployment](deployment/https.md), [offsite copies](deployment/offsite-backups.md), and [backup alerts](deployment/backup-alerts.md).
-
-**Milestone 5 — Expansion**
-- Approved metadata source adapters, richer pack creator, visual pack reveal, optional extras (auctions/events/achievements).
-- Current status (5A): instance admins can upload an original version 1 JSON catalog when creating a new realm, attest rights, review generated packs/tiers/initial odds, and confirm the matching preview. The demo remains available. Existing catalogs are not replaced; merges and live pack editing remain planned. Selected provider adapters were added in the player-experience follow-up below. See [catalog creation](content/catalog.md).
-- Current status (5B): original UTF-8 CSV uploads use the same authorized preview and transactional new-realm creation. Enter source/revision/permission details, use the downloadable header template, and review before installing. Stable IDs, tiering, provenance, and backup recovery are preserved. See [CSV format and setup](content/catalog.md#original-csv-catalogs-milestone-5b).
-- Current status (5C): after previewing a catalog, admins can choose qualifying categories and pack names for a new realm, set the existing minimum-pool/maximum-category rules, and review actual pools/odds. Automatic generation and the All Characters fallback remain available. Live editing and other filter types remain planned. See [starter pack selection](content/starter-packs.md).
-- Current status (5D): successful web openings offer manual card reveals, show-all/close, keyboard controls, reduced-motion summaries, and a browser-local opt-out. Presentation uses the actual saved opening result; failed requests reveal nothing and retries keep their existing receipt. Original CSS needs no external art/audio. See [pack reveals](gameplay/pack-reveals.md).
-
-- Current status (5E): realm creation uses durable, authorized retry receipts for demo/JSON/CSV catalogs and reviewed starter packs. Lost-response retries return the original realm and grant once, including after fresh encrypted recovery. Keep the page open to recover an uncertain result; reloads require checking the realm list. See [catalog creation](content/catalog.md).
-- Current status (5F): signed-in local accounts can change passwords with current-password verification, stale-form protection, separate attempt limits, atomic other-session revocation and safe retry confirmation. Discord-only accounts keep using Discord. Account deletion remains planned; password recovery is outside the current Discord-focused scope. See [account settings](deployment/account-settings.md).
-
-**Player-experience rework**
-- Follow-up: atomic 1/5/10-pack openings with grouped reveals, visible XP thresholds/caps, gem-claim timing on every play screen, and an on-demand Tenrai/Jikan-compatible API browser with optional remote artwork references. See [bundles](gameplay/pack-bundles.md) and [provider setup](content/providers.md).
-- Implemented: separate play/admin/account pages, admin/player preview, original local art, searchable physical-card collections, a complete character glossary, visual wishlist/trade pickers, the gem market, six leveled collector tracks and five rarity tiers with distinct motion/sound. Saved tiers, historical receipts and realm-wide ownership remain protected.
-- Implemented: configurable timed gem claims with server-authoritative rolling cooldown, retry-safe receipts, archive v12 and encrypted recovery. Existing rules remain unchanged by schema migration; current new realms default to 1,000 gems every six hours and the collector preset is reviewed before changing an existing economy.
-- Implemented: bounded, opt-in AniList metadata selection, authorized AniList/Jikan JSON adapters, stable canonical source IDs, explicit rights review and no image fetching. An original 1,000-character scale catalog generates major-category packs; automated tests use fixtures.
-- Manually verified: an actual 1,000-character anime roster from Tenrai, 993 remote artwork references, 1/5/10-pack draws, progression beyond level 5 using an explicit 100-level curve, retry receipts, personal export and fresh encrypted recovery. Real provider records remain outside committed fixtures.
-- Implemented: config v11 character values from saved source popularity and bounded realm wishlist demand, immediate recycling/rank purchases, inspectable portrait cards and a dedicated pack-opening room. Migration 0023 stores popularity without rewriting tiers or historical receipts; existing realms keep valuation disabled until a reviewed settings change.
-- Implemented: interface redesign (top bar, mobile tab bar, account menu, page headers without duplicated titles or balances, readable type scale), slim client realm view with server-paged glossary/wishlist picker, enriched market listings, batched catalog installation, 10,000-character provider rosters, anime+manga Tenrai rosters with era categories and readable MAL names, an AniList series browser, demographic+genre/theme/era pack generation and adding packs to existing realms. See [interface notes](design/interface.md) and [providers](content/providers.md).
-- Implemented: guided Administration hub (overview checklist, game rules, packs, players & access), five-step realm creation wizard with character source cards, searchable market listing picker, fixed card-picker layout, Kirameki branding.
-- Implemented: **Live pulls** below the packs on the Packs page (the latest rare, epic and legendary pulls as one row of cards, no scrolling; select a card to inspect it; Discord names only; refreshed every 15 seconds), richer synthesized reveal sounds with reverb, risers and impacts, an animated canvas background for openings, and **Administration → Reveal sounds** for one custom sound per rarity (any browser-decodable file, cut to 30 seconds). See [pack reveals](gameplay/pack-reveals.md).
-- Implemented: **Waifus** and **Husbandos** packs (Female/Male categories from AniList gender data or, for MyAnimeList rosters, a paced profile check in Administration → Characters), removable category packs (only All Characters is required; removed packs can be added back), and pack information above neighbouring tiles.
-- Implemented: themed premium pack wrappers (palette per pack theme, holographic foil, crimped seals with a tear line, glowing emblem) and a tear moment with a light flash, foil scraps and a synthesized rip; per-character reveal sounds that take priority over rarity sounds; **Add artwork to existing characters** for MyAnimeList realms (Administration → Characters); the site is now **Bakufu** and the Discord command `/bakufu` (the former `/atlas` keeps working until commands are re-registered). See [pack reveals](gameplay/pack-reveals.md) and [providers](content/providers.md).
-- Implemented: aligned settings layout shared by Game rules and the wizard (units, switches, rarity chance/value table, conditional **Use recommended**), Mudae-like card values (30 → ~1,085 gems), roster-size slider up to 100,000 characters with faster realm views for large rosters, **Administration → Characters** to add missing characters to MyAnimeList/AniList realms, and a footer that stays at the bottom of short pages. See [providers](content/providers.md) and [rarity and economy](gameplay/rarity-economy.md).
-- Implemented: free hosting on **Vercel + Neon** with Discord sign-in (slash commands off): gzip-compressed large uploads with the same server-side cap, a 60-second request limit, a configurable database pool (`DATABASE_POOL_MAX`), live pulls that pause when idle, and `pnpm discord:commands remove`. See [Vercel + Neon](deployment/vercel-neon.md).
-- Roadmap: a guided setup (installer or admin GUI) so self-hosters can deploy and configure Bakufu without working from the source code; dated market-price charts and richer valuation history; richer approved anime/manga providers/artwork pipelines; live catalog editing and pack editing beyond adding category packs; recurring-reward economy balancing. Valuation updates must preserve ownership, stable IDs, historical receipts and separate rarity decisions.
-
-**MVP acceptance tests**
+**Acceptance tests**
 - Two simultaneous attempts cannot both claim the same character in a unique realm.
 - Recycled character returns to pool once, credits gems once, and cannot be traded afterward.
 - Failed/empty pack opening does not deduct gems or consume a cooldown.
@@ -255,10 +224,10 @@ docs/
 
 ## 10. Agent collaboration
 
-Read [`AGENTS.md`](../AGENTS.md) before implementation. Treat this README as product intent, not an excuse to build all features immediately. Agents should implement the **smallest end-to-end tested milestone**, document deviations, and never claim unbuilt features are working.
-
-The initial implementation is deliberately limited to the foundation and thin
-web slice described in **Implementation status and quickstart** above.
+Read [`AGENTS.md`](../AGENTS.md) before implementation. Treat this specification
+as product intent, not a reason to build every feature at once: implement the
+smallest end-to-end tested slice, document deviations, and never claim that
+unbuilt features work.
 
 ## 11. Out of scope for the first release
 

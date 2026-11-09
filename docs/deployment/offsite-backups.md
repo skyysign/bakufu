@@ -1,6 +1,6 @@
 # Optional encrypted copies to S3-compatible storage
 
-Milestone 4D copies the encrypted snapshots from [scheduled backups](scheduled-backups.md)
+This optional setup copies the encrypted snapshots from [scheduled backups](scheduled-backups.md)
 to an existing private S3-compatible bucket. Every copied generation is read
 back and compared byte-for-byte before success is recorded. The application
 never uploads a decrypted snapshot, backup passphrase, or storage credentials.

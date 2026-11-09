@@ -1,9 +1,11 @@
-# Optional Discord sign-in
+# Discord sign-in
 
-Players can use **Continue with Discord** instead of creating another password.
-This is an optional website login method: it does not install a bot, add slash
-commands, or make realm access public. Local accounts still work without Discord.
-Optional [signed gameplay commands](discord-gameplay.md) have a separate setup.
+Players sign in with **Continue with Discord**: it is Bakufu's main login, and
+nobody needs another password. It does not install a bot or add slash commands,
+and signing in alone gives no realm access (players need an invitation or a join
+link). Local email-and-password accounts still work, for example for offline
+tests. [Slash commands](discord-gameplay.md) have a separate setup. The
+[Docker guide](quickstart.md) walks through this setup in short form.
 
 ## First administrator through Discord
 

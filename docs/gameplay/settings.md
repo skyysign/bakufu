@@ -1,4 +1,4 @@
-# Milestone 2E: reviewed live realm settings
+# Game rules: reviewed live realm settings
 
 Realm administrators can open **Administration → Game rules**, edit rules
 under the Economy, Collection, Progression, Collector ranks or Trading tabs,
@@ -110,7 +110,7 @@ presenting a quoted offer should pass its displayed revision.
 
 Migration `0007_realm_settings.sql` adds the revision, transient preview table,
 and realm-scoped change audit. It changes no existing gameplay settings or
-progress. Milestone 3A adds trading in config/player archive **[v6](trading.md)**; player exports use
+progress. Trading added config/player archive **[v6](trading.md)**; player exports use
 the current public rules and preserve personal IDs and history. Purchased-rank
 protection keeps older purchase history compatible with those current rules.
 

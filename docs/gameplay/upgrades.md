@@ -1,4 +1,4 @@
-# Milestone 2C: purchasable pack discounts
+# Purchasable pack discounts
 
 This page records the legacy upgrade system and its historical prototype
 defaults. Its separate shop is retired in the current experience; use the six

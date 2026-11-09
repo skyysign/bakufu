@@ -1,4 +1,4 @@
-# Milestone 3C: find realm members for trading
+# Finding realm members for trading
 
 Open **Trades → Start a trade**. Browse the member list or type in **Search realm
 members** to filter by Discord username or display name. Choose a result, check

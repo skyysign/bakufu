@@ -1,6 +1,6 @@
 # Automated restore checks
 
-Milestone 4B adds optional weekly recovery checks for the encrypted snapshots
+Optional weekly recovery checks for the encrypted snapshots
 created by [scheduled backups](scheduled-backups.md). Each check creates a fresh
 temporary database on a **separate PostgreSQL service**, migrates it, restores the
 snapshot, compares the saved fields, and removes the database. Success requires

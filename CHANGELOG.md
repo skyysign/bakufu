@@ -61,6 +61,13 @@ Newest migration: `0030_trade_proposals.sql` (realm config v12).
 
 ### Changed
 
+- **Self-hosting guide rewritten around Discord sign-in**
+  (`docs/deployment/quickstart.md`): Docker, Discord application, start, sign
+  in as admin, invite players, everyday commands, backups and troubleshooting;
+  local accounts are the fallback. The HTTPS guide creates the admin through
+  Discord too. Docs no longer carry internal "Milestone" labels, and the
+  specification's development log became a short roadmap. The join page shows
+  the site name instead of "Card Engine".
 - **Database transfer** cut drastically (Neon Free allows 5 GB a month, which
   busy realms used up within weeks). Each web server keeps a copy of a realm's
   roster and asks PostgreSQL only for a fingerprint of it, inside the same

@@ -1,6 +1,6 @@
 # Optional scheduled encrypted backups
 
-Milestone 4A adds an independent backup worker. It invokes the same encrypted
+An optional, independent backup worker invokes the same encrypted
 snapshot format and restore path as [manual backups](backups.md), without a web
 request, Discord, cron vendor, or cloud account. Default policy v1 keeps **7 daily
 and 4 weekly snapshots**, with a daily boundary at **03:00 UTC**. A mounted remote

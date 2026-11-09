@@ -1,4 +1,4 @@
-# Milestone 2B: XP and levels
+# XP and levels
 
 XP and levels are implemented. **Collector ranks** shows your current level, total
 XP, and progress to the next level, including the next threshold and award rule.

@@ -1,4 +1,4 @@
-# Milestone 3A: two-party trading
+# Trading
 
 Open **Trades** on the dashboard. Both players must already belong to the same
 realm. Copy **Your trade ID in this realm** and share it with the other player.

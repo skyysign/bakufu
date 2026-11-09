@@ -1,4 +1,4 @@
-# Web pack reveals (Milestone 5D)
+# Pack reveals
 
 After a successful web opening, a reveal shows the actual cards from that opening.
 It works in existing and new realms, including original JSON/CSV catalogs and

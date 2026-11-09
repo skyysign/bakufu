@@ -1,6 +1,6 @@
 # Optional backup failure and recovery alerts
 
-Milestone 4E adds an independent monitor. It reads the backup status files once
+An optional, independent monitor reads the backup status files once
 per minute and sends generic JSON to an operator-configured HTTPS receiver.
 It is disabled by default. No Discord bot, game database, encryption passphrase,
 or storage credentials are required by the monitor. Configure a receiver that

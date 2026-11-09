@@ -1,13 +1,14 @@
-# Portable HTTPS deployment on a Linux host
+# Put Bakufu online with HTTPS
 
-Milestone 4C adds an optional Caddy HTTPS proxy, an offline configuration check,
-and application health endpoints. This recipe uses a Linux machine or VPS with
-persistent storage and Docker Compose. It uses the same PostgreSQL/game image as
-the localhost setup and needs no hosting vendor, Discord, or external character
-API. This guide does not provision a server or change DNS/firewall rules for you.
+Run Bakufu on a Linux server or VPS with your own domain, so players can reach
+it from anywhere and sign in with Discord. [Caddy](https://caddyserver.com) in
+front of the game gets and renews the HTTPS certificate automatically. It is the
+same image and database as [self-hosting with Docker](quickstart.md); try that
+guide first if you haven't run Bakufu yet. This guide does not rent a server or
+change DNS or firewall rules for you.
 
-The default `docker compose up` continues to serve only localhost HTTP. Do not
-enable this overlay on your current PC merely to continue developing the game.
+The plain `docker compose up` keeps serving only `http://localhost:3000`; use
+this setup only on the machine that should be public.
 
 ## Prepare the host
 
@@ -31,8 +32,18 @@ enable this overlay on your current PC merely to continue developing the game.
    ```
 
    `PUBLIC_HOSTNAME` has no scheme, port, path, comma, or wildcard. `APP_ORIGIN`
-   must match exactly, without a trailing slash. The optional overlay forces
-   secure app cookies and also rejects inconsistent operator settings.
+   must match exactly, without a trailing slash. The overlay forces secure app
+   cookies and rejects inconsistent settings.
+
+   Add your Discord sign-in settings (`DISCORD_CLIENT_ID`,
+   `DISCORD_CLIENT_SECRET`, `DISCORD_ADMIN_USER_ID`) as in
+   [step 2 of the Docker guide](quickstart.md#2-set-up-discord-sign-in). In the
+   Discord Developer Portal, under **OAuth2 → Redirects**, add your public
+   callback:
+
+   ```text
+   https://cards.your-domain.net/api/auth/discord/callback
+   ```
 4. Permit inbound TCP **80 and 443** in the provider network rules and host
    configuration. Preserve SSH access. Do not publish PostgreSQL or the app's
    port 3000 to the internet. Docker publishes ports through its own firewall
@@ -65,10 +76,7 @@ docker compose -f compose.yaml -f infra/docker/compose.https.yaml up -d db migra
 docker compose -f compose.yaml -f infra/docker/compose.https.yaml ps
 ```
 
-Wait for web health to become healthy. For a **new instance**, run
-`docker compose exec web pnpm bootstrap` to create the first private admin.
-There is no default password. Website passwords accept 12–256 characters,
-separate from the database password. Local password login remains supported.
+Wait for web health to become healthy.
 
 If moving an **existing game**, restore its encrypted instance backup into this
 fresh database **before bootstrap**. Do not create replacement realms or users.
@@ -92,8 +100,11 @@ docker compose -f compose.yaml -f infra/docker/compose.https.yaml up -d
 curl --fail https://cards.your-domain.net/api/health/ready
 ```
 
-The expected body is `{"ok":true}`. Open that HTTPS site and verify your existing
-account, collection, and export. Caddy obtains/renews the public certificate and
+The expected body is `{"ok":true}`. Open that HTTPS site and choose **Continue
+with Discord**. On a **new instance**, the account matching
+`DISCORD_ADMIN_USER_ID` becomes the admin (there is no default password; without
+Discord, create a local admin with `docker compose exec web pnpm bootstrap`). For
+a **moved game**, check your existing account, collection and export. Caddy obtains/renews the public certificate and
 redirects HTTP to HTTPS once the domain and certificate challenge are reachable.
 Its `caddy-data` and `caddy-config` volumes survive container replacement. Keep
 those volumes and their private TLS keys protected; they are deployment state,
@@ -103,18 +114,12 @@ For configuration changes, rerun the settings check and recreate/restart the
 proxy. Its admin API is disabled; do not use `caddy reload` or expose port 2019.
 HSTS is one day, without subdomain/preload options. Use HTTPS consistently.
 
-## Optional Discord and backup workers
+## Optional: slash commands and backup workers
 
-Update the application's OAuth redirect in the Discord Developer Portal to:
-
-```text
-https://cards.your-domain.net/api/auth/discord/callback
-```
-
-Retain the same client credentials and explicit account links. If enabling signed
-commands, use `https://cards.your-domain.net/api/discord/interactions` and follow
-[command setup](discord-gameplay.md). Provider setup remains explicit; TLS does
-not register commands, link a realm, or change its joining rule.
+For `/bakufu` slash commands in your Discord server, use
+`https://cards.your-domain.net/api/discord/interactions` as the interactions
+endpoint and follow [command setup](discord-gameplay.md). HTTPS alone does not
+register commands, link a realm or change its joining rule.
 
 Enable [scheduled encrypted backups](scheduled-backups.md) on the host using
 an operator-prepared off-machine destination and separate private key. Add its
@@ -159,8 +164,8 @@ HTTP access logging is off. Runtime proxy error logs remove request objects and
 URI fields so failed callbacks cannot log OAuth codes/state, cookies, or bearer
 headers. The app retains its existing callback referrer suppression and Origin
 checks. Do not turn on debug/access logs without reviewing data exposure. There
-is no new account registration, password recovery, deletion, abuse-rate-limit
-service, or automatic security-update service in this slice.
+is no open account registration, password recovery, account deletion,
+abuse-rate-limit service or automatic security-update service.
 
 `pnpm test:https-docker` checks the built app image and real proxy snippets on a
 new internal Docker network. It uses a local CA and verifies TLS trust, HTTP
