@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
-import { defaultConfig } from '../../packages/config/src/index';
+import { defaultConfig, fitRankTracks } from '../../packages/config/src/index';
 import {
   bootstrap,
   createRealm,
@@ -11,6 +11,7 @@ import {
   parsePlayerArchive,
   openPack,
   buyUpgrade,
+  provisionPlayer,
   type Database,
 } from '../../packages/db/src/index';
 import { makeBackup, restoreBackup, assertBackupRestored } from '../../packages/db/src/backup';
@@ -96,6 +97,29 @@ describe('transactional rank progression and recovery', () => {
     expect(
       (await previewRealmSettings(db, admin, id, changed)).impact.blockers.join(' '),
     ).toContain('purchased levels');
+    // Admins see what is owned, so "Fit ranks to these rules" keeps those levels.
+    expect(view.ownedRankTrackLevels).toEqual({ bronze: 2, gold: 2, sapphire: 1, silver: 2 });
+    const fitted = {
+      ...view.config,
+      cooldownSeconds: 6 * 3600,
+      rankTracks: fitRankTracks(
+        view.config.rankTracks,
+        { ...view.config, cooldownSeconds: 6 * 3600 },
+        view.ownedRankTrackLevels!,
+      ),
+    };
+    const preview = await previewRealmSettings(db, admin, id, fitted);
+    expect(preview.impact.blockers).toEqual([]);
+    expect(preview.impact.changes.map((change) => change.label)).toContain(
+      'Collector rank progression',
+    );
+    const player = await provisionPlayer(
+      db,
+      id,
+      `rank-view-${randomUUID()}@example.test`,
+      randomBytes(24).toString('hex'),
+    );
+    expect((await getRealmView(db, player, id)).ownedRankTrackLevels).toBeNull();
     await expect(buyUpgrade(db, admin, id, 'pack_discount', 1, randomUUID())).rejects.toMatchObject(
       { code: 'LEGACY_PURCHASES_RETIRED' },
     );

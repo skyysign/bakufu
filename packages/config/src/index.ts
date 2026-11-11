@@ -14,6 +14,7 @@ import {
 export * from './character-values';
 import { fameFloorsSchema, defaultFameFloors, disabledFameFloors } from './fame-floors';
 export * from './fame-floors';
+export * from './profile';
 
 export const legacyTiers = ['common', 'uncommon', 'rare'] as const;
 export const tiers = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
@@ -204,13 +205,28 @@ const realmConfigV11Schema = realmConfigV10Schema.extend({
   schemaVersion: z.literal(11),
   characterValues: characterValuesSchema,
 });
-export const realmConfigSchema = realmConfigV11Schema.extend({
+const realmConfigV12Schema = realmConfigV11Schema.extend({
   schemaVersion: z.literal(12),
   fameFloors: fameFloorsSchema,
 });
+export const realmConfigSchema = realmConfigV12Schema.extend({
+  schemaVersion: z.literal(13),
+  // Epic and legendary cards need a second confirmation to recycle and are
+  // never part of a bulk recycling.
+  recycleSafeguard: z.boolean(),
+});
 export type RealmConfig = z.infer<typeof realmConfigSchema>;
+/** Rarities the recycling safeguard protects when it is on. */
+export const safeguardedTiers: readonly Tier[] = ['epic', 'legendary'];
+export function recycleNeedsConfirmation(
+  config: Pick<RealmConfig, 'recycleSafeguard'>,
+  tier: Tier,
+): boolean {
+  return config.recycleSafeguard && safeguardedTiers.includes(tier);
+}
 export const defaultConfig: RealmConfig = realmConfigSchema.parse({
-  schemaVersion: 12,
+  schemaVersion: 13,
+  recycleSafeguard: true,
   legacyPurchasesRetired: true,
   ownership: 'unique',
   packPrice: 200,
@@ -218,7 +234,8 @@ export const defaultConfig: RealmConfig = realmConfigSchema.parse({
   startingGems: 2000,
   cooldownSeconds: 0,
   minimumPoolSize: 2,
-  maximumCategoryPacks: 10,
+  // Nine category packs plus All Characters: ten packs in a new realm.
+  maximumCategoryPacks: 9,
   // 65% / 26% / 7% / 1.7% / 0.3%: close to each tier's share of a standing-v3 roster
   // (60 / 28 / 9 / 2.5 / 0.5%), slightly favouring commons so top cards last longer.
   tierWeights: {
@@ -359,23 +376,36 @@ export function parseRealmConfig(input: unknown): RealmConfig {
     typeof input === 'object' && input !== null && 'schemaVersion' in input
       ? input.schemaVersion
       : undefined;
-  if (version === 12) return realmConfigSchema.parse(input);
+  if (version === 13) return realmConfigSchema.parse(input);
+  // The recycling safeguard starts on for every realm (migration 0031).
+  return realmConfigSchema.parse({
+    ...parseV12RealmConfig(input),
+    schemaVersion: 13,
+    recycleSafeguard: true,
+  });
+}
+function parseV12RealmConfig(input: unknown) {
+  const version =
+    typeof input === 'object' && input !== null && 'schemaVersion' in input
+      ? input.schemaVersion
+      : undefined;
+  if (version === 12) return realmConfigV12Schema.parse(input);
   // Older realms keep the tiers they were created with: fame floors start off.
   if (version === 11)
-    return realmConfigSchema.parse({
+    return realmConfigV12Schema.parse({
       ...realmConfigV11Schema.parse(input),
       schemaVersion: 12,
       fameFloors: disabledFameFloors,
     });
   if (version === 10)
-    return realmConfigSchema.parse({
+    return realmConfigV12Schema.parse({
       ...realmConfigV10Schema.parse(input),
       schemaVersion: 12,
       characterValues: disabledCharacterValues,
       fameFloors: disabledFameFloors,
     });
   if (version === 9)
-    return realmConfigSchema.parse({
+    return realmConfigV12Schema.parse({
       ...realmConfigV9Schema.parse(input),
       schemaVersion: 12,
       rankTracks: disabledRankTracks,
@@ -383,7 +413,7 @@ export function parseRealmConfig(input: unknown): RealmConfig {
       fameFloors: disabledFameFloors,
     });
   const legacy = parseLegacyRealmConfig(input);
-  return realmConfigSchema.parse({
+  return realmConfigV12Schema.parse({
     ...legacy,
     schemaVersion: 12,
     tierWeights: { ...legacy.tierWeights, epic: 0, legendary: 0 },
@@ -394,9 +424,15 @@ export function parseRealmConfig(input: unknown): RealmConfig {
   });
 }
 
-/** A v12 config in its v11 shape, for recognizing receipts written before fame floors. */
+/** A v13 config in its v12 shape, for recognizing receipts written before the safeguard. */
+export function withoutRecycleSafeguard(config: RealmConfig) {
+  const { recycleSafeguard: _safeguard, ...rest } = config;
+  void _safeguard;
+  return { ...rest, schemaVersion: 12 as const };
+}
+/** A config in its v11 shape, for recognizing receipts written before fame floors. */
 export function withoutFameFloors(config: RealmConfig) {
-  const { fameFloors: _floors, ...rest } = config;
+  const { fameFloors: _floors, ...rest } = withoutRecycleSafeguard(config);
   void _floors;
   return { ...rest, schemaVersion: 11 as const };
 }

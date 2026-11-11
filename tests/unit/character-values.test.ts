@@ -61,9 +61,15 @@ describe('character-specific value rules', () => {
       popularityBonus: 0,
       demandBonus: 0,
     });
-    const { characterValues: _values, fameFloors: _floors, ...legacy } = defaultConfig;
+    const {
+      characterValues: _values,
+      fameFloors: _floors,
+      recycleSafeguard: _safeguard,
+      ...legacy
+    } = defaultConfig;
     void _values;
     void _floors;
+    void _safeguard;
     expect(parseRealmConfig({ ...legacy, schemaVersion: 10 }).characterValues.enabled).toBe(false);
   });
   it('uses configurable boosts and rejects wallet overflow without a credit', () => {

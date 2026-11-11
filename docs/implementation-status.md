@@ -92,9 +92,14 @@ not an automatic wallet refill. Disabled realms display that state explicitly.
 **Collector ranks** are separate from XP: improve Bronze, Silver and Gold
 independently through four increasingly expensive levels, then unlock Sapphire,
 Ruby and Emerald by meeting their mixed level prerequisites. Benefits include
-pack discounts, recycling bonuses, wishlist slots and cooldown reduction. New
-realms enable these tracks; existing realms require a reviewed settings change
-or collector economy preset. Old purchases/benefits remain intact.
+pack discounts, recycling bonuses, wishlist slots and cooldown reduction. The
+recommended ranks are measured against each realm's rules (costs in packs, perks
+as shares of the pack price, cooldown and common card value), so a 6-hour
+cooldown is cut by minutes, not seconds. New realms enable these tracks, fitted
+to their rules; existing realms use **Game rules → Collector ranks → Fit ranks
+to these rules**, which keeps every level a player already owns. Old
+purchases/benefits remain intact; covered by `tests/unit/rank-fit.test.ts` and
+`tests/integration/rank-tracks.test.ts`.
 See [rank rules](gameplay/collector-ranks.md).
 
 New realms use base rarity weights of **65% / 26% / 7% / 1.7% / 0.3%**, in
@@ -119,7 +124,11 @@ sets or clears one character's manual tier, and shows recent changes. Every
 change is journaled (`tier_adjustments`, migration 0028) and restore-checked.
 Cards can be recycled straight from the opening results, one by one or all of
 one tier at once (`recycleCards`, an all-or-nothing batch with one journal entry
-per card). Provider rosters walk more kinds of series (MyAnimeList: TV anime,
+per card), and from the collection with **Recycle several** (select cards or
+every card shown, sent in retry-safe batches of 50). The **recycling safeguard**
+(realm config v13, migration 0031, on by default and in Game rules → Collection)
+makes epic and legendary cards need a second click and keeps them out of bulk
+recycling, enforced by the server. Provider rosters walk more kinds of series (MyAnimeList: TV anime,
 web anime/ONA with most donghua, films, manga, manhwa, manhua, light novels;
 AniList: anime, donghua, manga, manhwa, manhua, light novels by country and
 format) with up to 100 characters per series. **Administration → Characters**
@@ -210,8 +219,21 @@ dialogs. See [wishlist rules](gameplay/wishlist.md).
 Card faces have a fixed **5:7 portrait shape**, artwork-led name/series overlays
 and colored rarity frames. Select a card to inspect its enlarged artwork,
 ownership state, source and character-value evidence; genres stay off the faces.
-Recycling and rank level-ups act on the first click, retaining pending-operation
-locks and same-request retries after uncertain responses.
+**Player profiles** (migration 0032): every member has a page per realm with
+their Discord name and picture, level, owned ranks, collection statistics, a
+showcase of up to six pinned cards (or their six most valuable), an optional
+wishlist, their own text and one of six page colours. The profile picture in
+the header opens your own page; **Players** (a tab on the profile page and an
+item in the account menu) is a searchable directory and
+leaderboard (most cards, rarest cards, name); another player's page lists the
+cards they hold that you wish for, lets you browse their collection and has
+**Propose a trade**, which opens a new offer to them. Realm members only; gems
+are never shown. See [player profiles](gameplay/profiles.md); covered by
+`tests/integration/profile-pages.test.ts` and `tests/support/profile-browser.ts`.
+Recycling (except safeguarded epic and legendary cards) and rank level-ups act
+on the first click, retaining pending-operation locks and same-request retries
+after uncertain responses. The collection remembers the chosen sort in the
+browser.
 Realm admins can open **Administration → Game rules**, edit rules, choose **Preview settings
 changes**, and apply the reviewed proposal. Purchased ranks and occupied wishlist
 slots are protected; stale pages cannot spend at unexpected new prices. See

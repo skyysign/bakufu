@@ -14,6 +14,7 @@ export const defaultConfig = {
   packPrice: 10,
   startingGems: 100,
   cooldownSeconds: 0,
+  maximumCategoryPacks: 10,
   tierWeights: { common: 70, uncommon: 25, rare: 5, epic: 0, legendary: 0 },
   recycleRewards: { common: 2, uncommon: 4, rare: 6, epic: 0, legendary: 0 },
   ranks: defaultCollectorRanks,
@@ -32,6 +33,7 @@ export function legacyRules<
     legacyPurchasesRetired?: boolean;
     characterValues?: unknown;
     fameFloors?: unknown;
+    recycleSafeguard?: boolean;
   },
 >(input: T) {
   const {
@@ -39,8 +41,10 @@ export function legacyRules<
     legacyPurchasesRetired: _retired,
     characterValues: _values,
     fameFloors: _floors,
+    recycleSafeguard: _safeguard,
     ...rules
   } = input;
+  void _safeguard;
   void _values;
   void _floors;
   void _retired;

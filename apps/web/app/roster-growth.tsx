@@ -233,9 +233,7 @@ export function RosterGrowth({
             value={stopIndex}
             disabled={locked}
             aria-valuetext={`${goal.toLocaleString()} characters`}
-            style={
-              { '--fill': `${(stopIndex / (growthStops.length - 1)) * 100}%` } as CSSProperties
-            }
+            style={{ '--fill': stopIndex / (growthStops.length - 1) } as CSSProperties}
             onChange={(event) => {
               const next = growthStops[Number(event.target.value)];
               setGoal(next);

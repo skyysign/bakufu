@@ -4,7 +4,12 @@ import { effectiveMemberConfig } from './rank-track-state';
 import { purchasedCollectorRank } from './rank-state';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { parseRealmConfig, type RealmConfig, type Tier } from '../../config/src/index';
+import {
+  parseRealmConfig,
+  recycleNeedsConfirmation,
+  type RealmConfig,
+  type Tier,
+} from '../../config/src/index';
 import {
   calculateRecycleCredit,
   GameError,
@@ -52,7 +57,9 @@ export async function recycleRules(
 /**
  * Recycles one card the owner holds, inside the caller's transaction (realm
  * locked, expired trades released): credits its value, journals the
- * recycling and ledger entry and frees the character.
+ * recycling and ledger entry and frees the character. With the realm's
+ * recycling safeguard on, an epic or legendary card needs `confirmed` (a
+ * single recycling the player confirmed); bulk recyclings never pass it.
  */
 export async function recycleOwnedCard(
   tx: Transaction,
@@ -63,6 +70,7 @@ export async function recycleOwnedCard(
   rules: RecycleRules,
   balance: number,
   schemaVersion: number,
+  confirmed = false,
 ): Promise<RecyclingResult> {
   if (schemaVersion >= 6) {
     if (
@@ -93,6 +101,12 @@ export async function recycleOwnedCard(
       'CARD_UNAVAILABLE',
       'This card is no longer available in your collection. No gems were awarded.',
       404,
+    );
+  if (!confirmed && recycleNeedsConfirmation(rules.config, card.tier as Tier))
+    throw new GameError(
+      'RECYCLE_CONFIRMATION_REQUIRED',
+      `${card.name} is ${card.tier}: this realm protects epic and legendary cards. Recycle it on its own and confirm. Nothing was recycled.`,
+      409,
     );
   const valuation = rules.values?.[card.character_id];
   const credit = calculateRecycleCredit(
@@ -141,6 +155,8 @@ export async function recycleCard(
   cardId: string,
   requestKey: string,
   expectedRevision?: number,
+  /** The player confirmed recycling an epic or legendary card (safeguard). */
+  confirmed = false,
 ): Promise<RecyclingResult> {
   [actorId, realmId, cardId, requestKey].forEach((value) => z.uuid().parse(value));
   return transaction(db, async (tx) => {
@@ -185,6 +201,7 @@ export async function recycleCard(
       await recycleRules(tx, realmId, actorId, realm.config),
       member.balance,
       realm.config.schemaVersion,
+      confirmed === true,
     );
   });
 }
@@ -220,7 +237,8 @@ const batchSchema = z.strictObject({
 /**
  * Recycles several of the member's cards at once (for example every common
  * of an opening). All or nothing: if one card can't be recycled, none is. A
- * retry with the same request key replays the stored results.
+ * retry with the same request key replays the stored results. Cards the
+ * recycling safeguard protects are refused: those are recycled one by one.
  */
 export async function recycleCards(
   db: Database,

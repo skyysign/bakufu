@@ -1,9 +1,11 @@
 # Recycling cards
 
 In **Your collection**, clicking **Recycle** acts immediately at the displayed
-estimate, with no second confirmation. A successful recycle removes that card
-from your active collection, credits gems once, and releases its character to
-the realm-wide pack pool. Another player may then claim it in a new card instance.
+estimate. Epic and legendary cards ask once more while the realm's
+[recycling safeguard](#recycling-safeguard) is on (the default). A successful
+recycle removes that card from your active collection, credits gems once, and
+releases its character to the realm-wide pack pool. Another player may then
+claim it in a new card instance.
 
 | Rarity | Default base reward |
 | --- | --- |
@@ -34,6 +36,36 @@ values. A default one-card pack costs 200 gems before rank discounts. Recycling
 releases cards, and rewards or depleted/custom pools may allow profitable
 recycling; see the [economy limits](rarity-economy.md#economy-limits).
 Recycling does not award XP or reset a pack cooldown.
+
+## Recycling several cards at once
+
+**Collection → Recycle several** turns the Recycle buttons into Select buttons.
+Pick cards one by one, or filter by rarity, series or name and choose **Select
+all shown**. The bar above the cards shows how many are selected and their gems;
+**Recycle selected** asks once to confirm. Cards in a trade, listed on the
+market or protected by the safeguard can't be selected. The cards go in batches
+of 50 through `POST /api/recycle/batch` (below): each batch is all-or-nothing
+with its own request key, and the bar shows the progress. If the connection
+drops, **Retry recycling** continues with the same keys, so no card is paid
+twice; if a batch is refused (for example a card was traded meanwhile), the
+batches before it stay recycled and the rest of the cards stay in the
+collection. The page says how many were recycled.
+
+## Recycling safeguard
+
+**Game rules → Collection → Recycling → Protect epic and legendary cards** is on
+for new realms and for realms that existed before it (migration 0031, config
+v13). While it is on:
+
+- recycling an epic or legendary card needs a second click (**Recycle epic
+  +N** / **Cancel**), in the collection and in the opening results;
+- bulk recyclings (collection and opening window) never include them.
+
+The server enforces it, not just the page: `POST /api/recycle` for such a card
+needs `"confirmed": true`, and `POST /api/recycle/batch` refuses a batch that
+contains one (`RECYCLE_CONFIRMATION_REQUIRED`, nothing recycled). Turning it
+off restores one-click recycling for every tier. Admin character removals refund
+owners regardless of the setting.
 
 ## Recycling from the opening window
 
@@ -126,6 +158,12 @@ personal export round trips, and fresh-database recovery (including older
 backups and inconsistent history rejection). Browser checks cover custom
 creation values, direct keyboard activation, response-loss retry,
 updated wallet/availability, export history, permission checks, and mobile UI.
+The safeguard is covered by `tests/integration/batch-recycling.test.ts` (refused
+bulk and unconfirmed single recyclings change nothing; confirmed ones and
+turning it off work) and `tests/integration/recycle-safeguard-upgrade.test.ts`
+(a played v12 realm migrates in place and a backup taken before the update
+restores); the browser suite selects every card shown and recycles them in one
+confirmed step, and confirms an epic or legendary card when one is pulled.
 
 XP and levels are now implemented through first collections, with persistent
 history preventing recycle/re-claim XP farming. [Collector rank tracks](collector-ranks.md)

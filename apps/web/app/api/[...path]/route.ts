@@ -41,11 +41,15 @@ import {
   removeCharacters,
   buyUpgrade,
   setWishlistEntry,
+  addWishlistEntries,
   previewRealmSettings,
   applyRealmSettings,
   tradeCommand,
   setDiscordGuild,
   listRealmMembers,
+  getPlayerProfile,
+  listPlayers,
+  updateProfilePage,
   configureAdmission,
   buyCollectorRank,
   buyRankTrackLevel,
@@ -395,6 +399,14 @@ export async function POST(request: Request, context: Context) {
         ),
       );
     }
+    if (path === 'wishlist/batch')
+      return NextResponse.json(
+        await addWishlistEntries(db(), actor.id, String(input.realmId ?? ''), {
+          characterIds: input.characterIds,
+          requestKey: input.requestKey,
+          expectedRevision: (input.expectedRevision as number | undefined) ?? 0,
+        }),
+      );
     if (path === 'wishlist') {
       return NextResponse.json(
         await setWishlistEntry(
@@ -428,9 +440,19 @@ export async function POST(request: Request, context: Context) {
         String(input.cardId ?? ''),
         String(input.requestKey ?? ''),
         (input.expectedRevision as number | undefined) ?? 0,
+        input.confirmed === true,
       );
       return NextResponse.json(result);
     }
+    if (path === 'profile')
+      return NextResponse.json(
+        await updateProfilePage(db(), actor.id, String(input.realmId ?? ''), {
+          bio: input.bio,
+          theme: input.theme,
+          showcase: input.showcase,
+          showWishlist: input.showWishlist,
+        }),
+      );
     if (path === 'recycle/batch')
       return NextResponse.json(
         await recycleCards(db(), actor.id, String(input.realmId ?? ''), {
@@ -606,6 +628,31 @@ export async function GET(request: Request, context: Context) {
           excludeWished: query.get('excludeWished') === 'true',
           offset: Number(query.get('offset') ?? 0),
           limit: Number(query.get('limit') ?? 24),
+        }),
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+    if (path === 'profile') {
+      const actor = await requireAccount(),
+        query = new URL(request.url).searchParams;
+      return NextResponse.json(
+        await getPlayerProfile(
+          db(),
+          actor.id,
+          query.get('realmId') ?? '',
+          query.get('player') || undefined,
+        ),
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+    if (path === 'players') {
+      const actor = await requireAccount(),
+        query = new URL(request.url).searchParams;
+      return NextResponse.json(
+        await listPlayers(db(), actor.id, query.get('realmId') ?? '', {
+          query: query.get('query') ?? '',
+          ...(query.has('sort') ? { sort: query.get('sort') } : {}),
+          ...(query.has('offset') ? { offset: Number(query.get('offset')) } : {}),
         }),
         { headers: { 'Cache-Control': 'private, no-store' } },
       );

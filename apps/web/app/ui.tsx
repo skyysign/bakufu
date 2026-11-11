@@ -9,7 +9,7 @@ import type { Account } from '@card-engine/db';
 import type { ClientRealmView as RealmView } from '../lib/client-view';
 import type { OpeningResult, RecyclingResult } from '@card-engine/core';
 import { packPresentation } from '@card-engine/core';
-import { tiers } from '@card-engine/config';
+import { recycleNeedsConfirmation, tiers } from '@card-engine/config';
 import {
   OpeningPreparation,
   PackReveal,
@@ -32,6 +32,7 @@ import { ApiError, post } from './api-client';
 import { siteName } from '../lib/brand';
 import { AdminHub } from './admin-hub';
 import { SeriesProgressList } from './series-progress';
+import { ProfileScreen, type ProfileView } from './profile';
 export function SignIn({
   discordEnabled,
   bootstrapNeeded,
@@ -181,6 +182,23 @@ export function SignIn({
   );
 }
 
+const collectionSorts = ['newest', 'rarity', 'value', 'name'] as const;
+type CollectionSort = (typeof collectionSorts)[number];
+const isCollectionSort = (value: string): value is CollectionSort =>
+  (collectionSorts as readonly string[]).includes(value);
+const collectionSortKey = 'bakufu-collection-sort';
+/** Cards per bulk request (the server's recycleBatchLimit). */
+const bulkBatchSize = 50;
+type BulkRecycling = {
+  chunks: { cardIds: string[]; key: string }[];
+  /** Index of the next batch to send. */
+  next: number;
+  revision: number;
+  total: number;
+  recycled: number;
+  credited: number;
+};
+
 export function Dashboard({
   account,
   realms,
@@ -189,6 +207,9 @@ export function Dashboard({
   screen = 'packs',
   initialTask,
   initialPack,
+  profilePlayer,
+  profileView = 'profile',
+  tradePartner,
 }: {
   account: Account;
   realms: { id: string; name: string }[];
@@ -197,6 +218,9 @@ export function Dashboard({
   screen?: GameScreen;
   initialTask?: string;
   initialPack?: string;
+  profilePlayer?: string;
+  profileView?: ProfileView;
+  tradePartner?: string;
 }) {
   const router = useRouter();
   // Realm-provided arrival sounds; the timestamp versions the cached audio.
@@ -283,10 +307,20 @@ export function Dashboard({
     cardId: string;
     key: string;
     revision: number;
+    confirmed: boolean;
   } | null>(null);
   const [recyclingReceipt, setRecyclingReceipt] = useState<RecyclingResult | null>(null);
+  // An epic or legendary card waiting for its second click (recycling safeguard).
+  const [confirmRecycle, setConfirmRecycle] = useState<string | null>(null);
+  // Recycling several collection cards at once.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [pendingBulk, setPendingBulk] = useState<BulkRecycling | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [bulkReceipt, setBulkReceipt] = useState<{ count: number; credited: number } | null>(null);
   const [pendingWish, setPendingWish] = useState<{
-    characterId: string;
+    characterIds: string[];
     present: boolean;
     key: string;
     revision: number;
@@ -298,7 +332,25 @@ export function Dashboard({
   const [gemClaimPending, setGemClaimPending] = useState(false);
   const [collectionSearch, setCollectionSearch] = useState('');
   const [collectionTier, setCollectionTier] = useState('all');
-  const [collectionSort, setCollectionSort] = useState('newest');
+  const [collectionSort, setCollectionSort] = useState<CollectionSort>('newest');
+  // The chosen sort is remembered in this browser and becomes the default.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(collectionSortKey);
+      if (saved && isCollectionSort(saved)) setCollectionSort(saved);
+    } catch {
+      // Storage can be unavailable in private browsing; keep the default.
+    }
+  }, []);
+  function changeCollectionSort(value: string) {
+    if (!isCollectionSort(value)) return;
+    setCollectionSort(value);
+    try {
+      localStorage.setItem(collectionSortKey, value);
+    } catch {
+      // The sort still applies for this visit.
+    }
+  }
   const [collectionView, setCollectionView] = useState<'cards' | 'series'>('cards');
   const [packSearch, setPackSearch] = useState('');
   const [adminMode, setAdminMode] = useState(true);
@@ -331,6 +383,7 @@ export function Dashboard({
       !!reveal ||
       busy ||
       pendingRecycle ||
+      pendingBulk ||
       pendingWish ||
       gemClaimPending ||
       marketBusy ||
@@ -397,14 +450,16 @@ export function Dashboard({
       }
     }
   }
-  async function recycle(cardId: string) {
-    if (!view || busy || pending || pendingWish || settingsBusy || tradeBusy) return;
+  async function recycle(cardId: string, confirmed = false) {
+    if (!view || busy || pending || pendingBulk || pendingWish || settingsBusy || tradeBusy) return;
     const attempt = pendingRecycle ?? {
       cardId,
       key: crypto.randomUUID(),
       revision: view.configRevision,
+      confirmed,
     };
     if (attempt.cardId !== cardId) return;
+    setConfirmRecycle(null);
     setBusy(`recycle:${cardId}`);
     setError('');
     setPendingRecycle(attempt);
@@ -414,8 +469,10 @@ export function Dashboard({
         cardId,
         requestKey: attempt.key,
         expectedRevision: attempt.revision,
+        ...(attempt.confirmed ? { confirmed: true } : {}),
       })) as RecyclingResult;
       setRecyclingReceipt(result);
+      setBulkReceipt(null);
       setPendingRecycle(null);
       router.refresh();
     } catch (error) {
@@ -432,7 +489,10 @@ export function Dashboard({
   // Recycling from the opening results. A request whose outcome is unknown
   // (network/server error) keeps its key, so retrying never pays twice.
   const revealRecycleKeys = useRef(new Map<string, string>());
-  async function recycleFromReveal(cardIds: string[]): Promise<Record<string, number>> {
+  async function recycleFromReveal(
+    cardIds: string[],
+    confirmed = false,
+  ): Promise<Record<string, number>> {
     if (!view) throw new Error('This realm is not available.');
     const id = cardIds.join(',');
     const requestKey = revealRecycleKeys.current.get(id) ?? crypto.randomUUID();
@@ -446,6 +506,7 @@ export function Dashboard({
                 cardId: cardIds[0],
                 requestKey,
                 expectedRevision: view.configRevision,
+                ...(confirmed ? { confirmed: true } : {}),
               })) as RecyclingResult,
             ]
           : (
@@ -464,10 +525,92 @@ export function Dashboard({
       throw error;
     }
   }
-  async function changeWish(characterId: string, present: boolean) {
-    if (!view || busy || pending || pendingRecycle || settingsBusy || tradeBusy) return;
+  // Recycles the selected cards in batches of up to 50, each all-or-nothing
+  // with its own request key. A batch whose outcome is unknown (network or
+  // server error) keeps its key, so Retry continues without paying twice.
+  async function recycleSelected() {
+    if (
+      !view ||
+      busy ||
+      pending ||
+      pendingRecycle ||
+      pendingWish ||
+      settingsBusy ||
+      tradeBusy ||
+      marketBusy ||
+      rankBusy
+    )
+      return;
+    let state: BulkRecycling = pendingBulk ?? {
+      chunks: Array.from({ length: Math.ceil(selectedCards.length / bulkBatchSize) }, (_, i) => ({
+        cardIds: selectedCards
+          .slice(i * bulkBatchSize, (i + 1) * bulkBatchSize)
+          .map((card) => card.cardId),
+        key: crypto.randomUUID(),
+      })),
+      next: 0,
+      revision: view.configRevision,
+      total: selectedCards.length,
+      recycled: 0,
+      credited: 0,
+    };
+    if (!state.total) return;
+    setPendingBulk(state);
+    setBulkConfirm(false);
+    setBusy('bulk-recycle');
+    setError('');
+    try {
+      while (state.next < state.chunks.length) {
+        setBulkProgress({ done: state.recycled, total: state.total });
+        const chunk = state.chunks[state.next];
+        const result = (await post('recycle/batch', {
+          realmId: view.id,
+          cardIds: chunk.cardIds,
+          requestKey: chunk.key,
+          expectedRevision: state.revision,
+        })) as { recycled: RecyclingResult[]; credited: number };
+        state = {
+          ...state,
+          next: state.next + 1,
+          recycled: state.recycled + result.recycled.length,
+          credited: state.credited + result.credited,
+        };
+        setPendingBulk(state);
+      }
+      setPendingBulk(null);
+      setSelected([]);
+      setRecyclingReceipt(null);
+      setBulkReceipt({ count: state.recycled, credited: state.credited });
+      router.refresh();
+    } catch (error) {
+      if (error instanceof ApiError && error.status < 500) {
+        setPendingBulk(null);
+        setError(
+          state.recycled
+            ? `Recycled ${state.recycled} of ${state.total} cards (+${state.credited.toLocaleString()} gems); the rest stay in your collection. ${(error as Error).message}`
+            : (error as Error).message,
+        );
+        if (state.recycled) {
+          setRecyclingReceipt(null);
+          setBulkReceipt({ count: state.recycled, credited: state.credited });
+        }
+        router.refresh();
+      } else
+        setError(
+          `${(error as Error).message} Choose Retry recycling to continue; no card is recycled twice.`,
+        );
+    } finally {
+      setBusy(null);
+      setBulkProgress(null);
+    }
+  }
+  // One character changes through /api/wishlist; several picked together are
+  // added in one all-or-nothing request. A retry reuses the same key.
+  async function changeWish(characterIds: string[], present: boolean) {
+    if (!view || busy || pending || pendingRecycle || pendingBulk || settingsBusy || tradeBusy)
+      return;
     const attempt = pendingWish ?? {
-      characterId,
+      characterIds,
       present,
       key: crypto.randomUUID(),
       revision: view.configRevision,
@@ -477,15 +620,27 @@ export function Dashboard({
     setError('');
     setWishMessage('');
     try {
-      await post('wishlist', {
-        realmId: view.id,
-        characterId: attempt.characterId,
-        present: attempt.present,
-        requestKey: attempt.key,
-        expectedRevision: attempt.revision,
-      });
+      if (attempt.characterIds.length === 1)
+        await post('wishlist', {
+          realmId: view.id,
+          characterId: attempt.characterIds[0],
+          present: attempt.present,
+          requestKey: attempt.key,
+          expectedRevision: attempt.revision,
+        });
+      else
+        await post('wishlist/batch', {
+          realmId: view.id,
+          characterIds: attempt.characterIds,
+          requestKey: attempt.key,
+          expectedRevision: attempt.revision,
+        });
       setPendingWish(null);
-      setWishMessage('Wishlist change saved.');
+      setWishMessage(
+        attempt.characterIds.length > 1
+          ? `${attempt.characterIds.length} characters added to your wishlist.`
+          : 'Wishlist change saved.',
+      );
       router.refresh();
     } catch (error) {
       setError((error as Error).message);
@@ -525,6 +680,25 @@ export function Dashboard({
                 (view?.characterValues[a.id]?.marketValue ?? 0) || a.name.localeCompare(b.name)
             : b.acquiredAt.localeCompare(a.acquiredAt),
     );
+  // Cards that can join a bulk recycling: not reserved, not listed, not
+  // protected by the safeguard and not just recycled.
+  const bulkEligible = (card: (typeof collection)[number]) =>
+    !card.lockedForTrade &&
+    !card.listedForSale &&
+    recyclingReceipt?.cardId !== card.cardId &&
+    !(view && recycleNeedsConfirmation(view.config, card.tier));
+  const selectedIds = new Set(selected);
+  const selectedCards = collection.filter(
+    (card) => selectedIds.has(card.cardId) && bulkEligible(card),
+  );
+  const selectedGems = selectedCards.reduce(
+    (sum, card) => sum + (view?.characterValues[card.id]?.recycleValue ?? 0),
+    0,
+  );
+  const shownSelectable = filteredCollection.filter(bulkEligible);
+  const shownGuarded = filteredCollection.filter(
+    (card) => !!view && recycleNeedsConfirmation(view.config, card.tier),
+  ).length;
   const tierCounts = Object.fromEntries(
     tiers.map((tier) => [tier, collection.filter((card) => card.tier === tier).length]),
   ) as Record<(typeof tiers)[number], number>;
@@ -538,6 +712,7 @@ export function Dashboard({
     rankBusy ||
     !!pending ||
     !!pendingRecycle ||
+    !!pendingBulk ||
     !!pendingWish ||
     !!preparation ||
     !!reveal ||
@@ -672,16 +847,20 @@ export function Dashboard({
           <>
             {screen === 'packs' && !requestedPack && <DiscoveryHero view={view} />}
             {(screen === 'collection' || (screen === 'packs' && !openingStudio)) &&
-              recyclingReceipt && (
+              (recyclingReceipt || bulkReceipt) && (
                 <section className="discovery receipt-banner" aria-live="polite">
                   <span className="receipt-icon" aria-hidden="true">
                     <GameIcon name="recycle" />
                   </span>
                   <div>
-                    <h2>{recyclingReceipt.name} recycled</h2>
+                    <h2>
+                      {bulkReceipt
+                        ? `${bulkReceipt.count.toLocaleString()} ${bulkReceipt.count === 1 ? 'card' : 'cards'} recycled`
+                        : `${recyclingReceipt!.name} recycled`}
+                    </h2>
                     <p>
-                      +{recyclingReceipt.credited.toLocaleString()} gems · back in this realm’s pack
-                      pool.
+                      +{(bulkReceipt ?? recyclingReceipt)!.credited.toLocaleString()} gems · back in
+                      this realm’s pack pool.
                     </p>
                   </div>
                 </section>
@@ -708,6 +887,7 @@ export function Dashboard({
                       packName={reveal.packName}
                       onDismiss={dismissReveal}
                       onRecycle={recycleFromReveal}
+                      safeguard={view.config.recycleSafeguard}
                       onBrowseCollection={() => {
                         dismissReveal();
                         router.push(screenHref('collection', view.id));
@@ -725,6 +905,7 @@ export function Dashboard({
                         !!busy ||
                         !!reveal ||
                         !!pendingRecycle ||
+                        !!pendingBulk ||
                         !!pendingWish ||
                         settingsBusy ||
                         rankBusy ||
@@ -862,6 +1043,7 @@ export function Dashboard({
                     !!busy ||
                     !!pending ||
                     !!pendingRecycle ||
+                    !!pendingBulk ||
                     !!pendingWish ||
                     settingsBusy ||
                     tradeBusy ||
@@ -982,15 +1164,137 @@ export function Dashboard({
                             <select
                               id="collection-sort"
                               value={collectionSort}
-                              onChange={(event) => setCollectionSort(event.target.value)}
+                              title="Your choice is remembered in this browser"
+                              onChange={(event) => changeCollectionSort(event.target.value)}
                             >
-                              <option value="newest">Recently collected</option>
-                              <option value="rarity">Rarest first</option>
-                              <option value="value">Highest value</option>
-                              <option value="name">Name A–Z</option>
+                              <option value="newest">Sort: Newest first</option>
+                              <option value="rarity">Sort: Rarest first</option>
+                              <option value="value">Sort: Highest value</option>
+                              <option value="name">Sort: Name A–Z</option>
                             </select>
                           </div>
+                          <button
+                            type="button"
+                            className="secondary collection-select-toggle"
+                            aria-pressed={selecting}
+                            disabled={!!pendingBulk || busy === 'bulk-recycle'}
+                            onClick={() => {
+                              setSelecting(!selecting);
+                              setSelected([]);
+                              setBulkConfirm(false);
+                              setConfirmRecycle(null);
+                            }}
+                          >
+                            <GameIcon name={selecting ? 'check' : 'recycle'} />
+                            {selecting ? 'Done' : 'Recycle several'}
+                          </button>
                         </div>
+                        {selecting && (
+                          <div
+                            className="bulk-recycle-bar panel"
+                            role="region"
+                            aria-label="Recycle several cards"
+                          >
+                            <p className="bulk-recycle-status" role="status">
+                              {bulkProgress ? (
+                                `Recycling… ${bulkProgress.done.toLocaleString()} of ${bulkProgress.total.toLocaleString()} cards`
+                              ) : bulkConfirm ? (
+                                <>
+                                  Recycle {selectedCards.length.toLocaleString()}{' '}
+                                  {selectedCards.length === 1 ? 'card' : 'cards'} for{' '}
+                                  <span className="gem-text">
+                                    <GameIcon name="gem" />+{selectedGems.toLocaleString()}
+                                  </span>
+                                  ? The characters go back into the packs for anyone to pull.
+                                </>
+                              ) : pendingBulk ? (
+                                `${pendingBulk.recycled.toLocaleString()} of ${pendingBulk.total.toLocaleString()} cards recycled so far.`
+                              ) : selectedCards.length ? (
+                                <>
+                                  {selectedCards.length.toLocaleString()} selected ·{' '}
+                                  <span className="gem-text">
+                                    <GameIcon name="gem" />+{selectedGems.toLocaleString()}
+                                  </span>
+                                </>
+                              ) : (
+                                'Pick cards below, or filter by rarity or series and select every card shown.'
+                              )}
+                            </p>
+                            <div className="bulk-recycle-actions">
+                              {pendingBulk ? (
+                                <button
+                                  type="button"
+                                  disabled={!!busy}
+                                  onClick={() => void recycleSelected()}
+                                >
+                                  {busy === 'bulk-recycle' ? 'Recycling…' : 'Retry recycling'}
+                                </button>
+                              ) : bulkConfirm ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={!!busy || !selectedCards.length}
+                                    onClick={() => void recycleSelected()}
+                                  >
+                                    <GameIcon name="recycle" />
+                                    Recycle {selectedCards.length.toLocaleString()}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="secondary"
+                                    disabled={!!busy}
+                                    onClick={() => setBulkConfirm(false)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="secondary"
+                                    disabled={
+                                      !!busy ||
+                                      shownSelectable.every((card) => selectedIds.has(card.cardId))
+                                    }
+                                    onClick={() =>
+                                      setSelected([
+                                        ...new Set([
+                                          ...selected,
+                                          ...shownSelectable.map((card) => card.cardId),
+                                        ]),
+                                      ])
+                                    }
+                                  >
+                                    Select all shown ({shownSelectable.length.toLocaleString()})
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="secondary"
+                                    disabled={!!busy || !selectedCards.length}
+                                    onClick={() => setSelected([])}
+                                  >
+                                    Clear
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={locked || !selectedCards.length}
+                                    onClick={() => setBulkConfirm(true)}
+                                  >
+                                    <GameIcon name="recycle" />
+                                    Recycle selected
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                            {shownGuarded > 0 && (
+                              <p className="field-help">
+                                <GameIcon name="shield" /> Epic and legendary cards are protected in
+                                this realm: recycle them one at a time.
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
                     {collection.length ? (
@@ -1000,63 +1304,155 @@ export function Dashboard({
                             const valuation = view.characterValues[card.id];
                             const reward = valuation.recycleValue;
                             const recovering = pendingRecycle?.cardId === card.cardId;
+                            const guarded = recycleNeedsConfirmation(view.config, card.tier);
+                            const chosen = selecting && selectedIds.has(card.cardId);
+                            const actionsLocked =
+                              !!busy ||
+                              !!pending ||
+                              !!pendingBulk ||
+                              !!pendingWish ||
+                              settingsBusy ||
+                              rankBusy ||
+                              marketBusy ||
+                              tradeBusy;
                             return (
                               <article
-                                className={`character collection-card ${card.tier}`}
+                                className={`character collection-card ${card.tier}${chosen ? ' selected' : ''}`}
                                 key={card.cardId}
                               >
                                 <InspectableCard
                                   card={{ ...card, valuation }}
                                   value={valuation.marketValue}
                                 />
-                                <button
-                                  className="secondary wide recycle-button"
-                                  aria-label={
-                                    recovering
-                                      ? 'Retry recycling'
-                                      : card.listedForSale
+                                {selecting ? (
+                                  <button
+                                    type="button"
+                                    className="secondary wide recycle-button select-toggle"
+                                    aria-pressed={chosen}
+                                    aria-label={
+                                      card.listedForSale
                                         ? `${card.name} listed on market`
                                         : card.lockedForTrade
                                           ? `${card.name} reserved in a trade`
-                                          : `Recycle ${card.name} for ${reward} gems`
-                                  }
-                                  disabled={
-                                    !!busy ||
-                                    !!pending ||
-                                    (!!pendingRecycle && !recovering) ||
-                                    !!pendingWish ||
-                                    settingsBusy ||
-                                    rankBusy ||
-                                    marketBusy ||
-                                    tradeBusy ||
-                                    card.lockedForTrade ||
-                                    card.listedForSale ||
-                                    recyclingReceipt?.cardId === card.cardId
-                                  }
-                                  onClick={() => void recycle(card.cardId)}
-                                >
-                                  {busy === `recycle:${card.cardId}` ? (
-                                    'Recycling…'
-                                  ) : recovering ? (
-                                    'Retry recycling'
-                                  ) : card.listedForSale ? (
-                                    <>
-                                      <GameIcon name="tag" /> Listed on market
-                                    </>
-                                  ) : card.lockedForTrade ? (
-                                    <>
-                                      <GameIcon name="lock" /> In a trade
-                                    </>
-                                  ) : (
-                                    <>
-                                      <GameIcon name="recycle" />
-                                      Recycle
+                                          : guarded
+                                            ? `${card.name} is protected; recycle it on its own`
+                                            : `Select ${card.name} (${reward} gems)`
+                                    }
+                                    disabled={actionsLocked || !bulkEligible(card)}
+                                    onClick={() =>
+                                      setSelected(
+                                        chosen
+                                          ? selected.filter((id) => id !== card.cardId)
+                                          : [...selected, card.cardId],
+                                      )
+                                    }
+                                  >
+                                    {card.listedForSale ? (
+                                      <>
+                                        <GameIcon name="tag" /> Listed on market
+                                      </>
+                                    ) : card.lockedForTrade ? (
+                                      <>
+                                        <GameIcon name="lock" /> In a trade
+                                      </>
+                                    ) : guarded ? (
+                                      <>
+                                        <GameIcon name="shield" /> Protected
+                                      </>
+                                    ) : (
+                                      <>
+                                        <GameIcon name={chosen ? 'check' : 'plus'} />
+                                        {chosen ? 'Selected' : 'Select'}
+                                        <span className="recycle-reward">
+                                          +{reward.toLocaleString()}
+                                        </span>
+                                      </>
+                                    )}
+                                  </button>
+                                ) : confirmRecycle === card.cardId ? (
+                                  <div
+                                    className="recycle-confirm"
+                                    role="group"
+                                    aria-label={`Confirm recycling ${card.name}`}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="wide recycle-button"
+                                      title={`Recycle this ${card.tier} card`}
+                                      autoFocus
+                                      disabled={actionsLocked || !!pendingRecycle}
+                                      onClick={() => void recycle(card.cardId, true)}
+                                    >
+                                      Confirm
                                       <span className="recycle-reward">
                                         +{reward.toLocaleString()}
                                       </span>
-                                    </>
-                                  )}
-                                </button>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="secondary icon-button"
+                                      aria-label="Cancel"
+                                      title="Keep this card"
+                                      disabled={!!busy}
+                                      onClick={() => setConfirmRecycle(null)}
+                                    >
+                                      <GameIcon name="close" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    className="secondary wide recycle-button"
+                                    aria-label={
+                                      recovering
+                                        ? 'Retry recycling'
+                                        : card.listedForSale
+                                          ? `${card.name} listed on market`
+                                          : card.lockedForTrade
+                                            ? `${card.name} reserved in a trade`
+                                            : `Recycle ${card.name} for ${reward} gems`
+                                    }
+                                    disabled={
+                                      !!busy ||
+                                      !!pending ||
+                                      (!!pendingRecycle && !recovering) ||
+                                      !!pendingWish ||
+                                      settingsBusy ||
+                                      rankBusy ||
+                                      marketBusy ||
+                                      tradeBusy ||
+                                      card.lockedForTrade ||
+                                      card.listedForSale ||
+                                      recyclingReceipt?.cardId === card.cardId
+                                    }
+                                    onClick={() =>
+                                      guarded && !recovering
+                                        ? setConfirmRecycle(card.cardId)
+                                        : void recycle(card.cardId)
+                                    }
+                                  >
+                                    {busy === `recycle:${card.cardId}` ? (
+                                      'Recycling…'
+                                    ) : recovering ? (
+                                      'Retry recycling'
+                                    ) : card.listedForSale ? (
+                                      <>
+                                        <GameIcon name="tag" /> Listed on market
+                                      </>
+                                    ) : card.lockedForTrade ? (
+                                      <>
+                                        <GameIcon name="lock" /> In a trade
+                                      </>
+                                    ) : (
+                                      <>
+                                        <GameIcon name={guarded ? 'shield' : 'recycle'} />
+                                        Recycle
+                                        <span className="recycle-reward">
+                                          +{reward.toLocaleString()}
+                                        </span>
+                                      </>
+                                    )}
+                                  </button>
+                                )}
                               </article>
                             );
                           })}
@@ -1089,13 +1485,14 @@ export function Dashboard({
                 <WishlistLibrary
                   view={view}
                   disabled={locked}
-                  onWish={(id, present) => void changeWish(id, present)}
+                  onWish={(id, present) => void changeWish([id], present)}
+                  onAdd={(ids) => void changeWish(ids, true)}
                 />
                 {pendingWish && (
                   <button
                     className="secondary"
                     disabled={!!busy}
-                    onClick={() => changeWish(pendingWish.characterId, pendingWish.present)}
+                    onClick={() => changeWish(pendingWish.characterIds, pendingWish.present)}
                   >
                     Retry wishlist change
                   </button>
@@ -1113,6 +1510,7 @@ export function Dashboard({
                   !!busy ||
                   !!pending ||
                   !!pendingRecycle ||
+                  !!pendingBulk ||
                   !!pendingWish ||
                   settingsBusy ||
                   tradeBusy ||
@@ -1121,14 +1519,24 @@ export function Dashboard({
                 onLockChange={setMarketBusy}
               />
             )}
+            {screen === 'profile' && (
+              <ProfileScreen
+                view={view}
+                player={profilePlayer}
+                tab={profileView}
+                disabled={locked}
+              />
+            )}
             {screen === 'trades' && (
               <Trades
                 key={view.id}
                 view={view}
+                initialPartner={tradePartner}
                 disabled={
                   !!busy ||
                   !!pending ||
                   !!pendingRecycle ||
+                  !!pendingBulk ||
                   !!pendingWish ||
                   settingsBusy ||
                   rankBusy ||

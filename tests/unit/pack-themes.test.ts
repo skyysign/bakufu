@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   defaultPackName,
+  buildStarterPacks,
   generatePacks,
   packPresentation,
   presentPacks,
@@ -192,15 +193,24 @@ describe('truthful anime-inspired pack editions', () => {
     });
     // Demographics with at least two characters lead; distinct genre/theme
     // pools follow by size. Mystery has exactly Seinen's pool, so it is skipped.
-    expect(packs.slice(0, 3).map((pack) => pack.category)).toEqual([
-      'Seinen',
-      'Shoujo',
-      'Shounen',
-    ]);
+    expect(packs.slice(0, 3).map((pack) => pack.category)).toEqual(['Seinen', 'Shoujo', 'Shounen']);
     expect(packs.map((pack) => pack.category)).toEqual(
-      expect.arrayContaining(['Action', 'Romance', 'School', 'Adventure']),
+      expect.arrayContaining(['Action', 'Romance', 'School']),
     );
     expect(packs.map((pack) => pack.category)).not.toContain('Mystery');
+    // Adventure (Grand Voyage) mostly repeats Action and Fantasy: never automatic,
+    // but still a choice for a hand-picked plan.
+    expect(packs.map((pack) => pack.category)).not.toContain('Adventure');
+    expect(
+      buildStarterPacks(
+        characters,
+        { ...defaultConfig, minimumPoolSize: 2 },
+        {
+          schemaVersion: 1,
+          categories: [{ category: 'Adventure', name: 'Grand Voyage' }],
+        },
+      ).map((pack) => pack.name),
+    ).toEqual(['Grand Voyage', 'All Characters']);
     expect(packs.at(-1)).toEqual({ name: 'All Characters', category: null });
     // A tag covering nearly the whole roster would only repeat All Characters.
     const nearTotal = characters.map((character) => ({

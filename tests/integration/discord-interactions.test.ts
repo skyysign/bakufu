@@ -544,7 +544,8 @@ describe('signed Discord gameplay with shared PostgreSQL state', () => {
         expect(realm.config.schemaVersion).toBe(6);
         realm.config = {
           ...realm.config,
-          schemaVersion: 12,
+          schemaVersion: 13,
+          recycleSafeguard: true,
           fameFloors: disabledFameFloors,
           legacyPurchasesRetired: false,
           rankTracks: { enabled: false, tracks: [] },

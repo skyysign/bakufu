@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { MarketListing } from '@card-engine/db';
 import type { ClientRealmView as RealmView } from '../lib/client-view';
 import { GameIcon } from './game-art';
@@ -252,9 +253,19 @@ export function Market({
                       <small>asking price</small>
                     </div>
                     <p className="seller-name">
-                      {listing.isMine
-                        ? 'Your listing'
-                        : `Sold by ${listing.sellerName ?? `Collector ${listing.sellerCode.slice(0, 8)}`}`}
+                      {listing.isMine ? (
+                        'Your listing'
+                      ) : (
+                        <>
+                          Sold by{' '}
+                          <Link
+                            scroll={false}
+                            href={`/profile?realm=${encodeURIComponent(view.id)}&player=${encodeURIComponent(listing.sellerCode)}`}
+                          >
+                            {listing.sellerName ?? `Collector ${listing.sellerCode.slice(0, 8)}`}
+                          </Link>
+                        </>
+                      )}
                     </p>
                     {listing.status !== 'active' ? (
                       <span className={`badge listing-${listing.status}`}>{listing.status}</span>
@@ -370,7 +381,9 @@ export function Market({
                     setCard(id);
                     const chosen = view.cards.find((entry) => entry.cardId === id);
                     if (chosen)
-                      setPrice(String(Math.max(1, view.characterValues[chosen.id]?.marketValue ?? 1)));
+                      setPrice(
+                        String(Math.max(1, view.characterValues[chosen.id]?.marketValue ?? 1)),
+                      );
                   }}
                 />
               </div>

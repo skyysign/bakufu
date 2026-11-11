@@ -174,11 +174,11 @@ export async function verifyProviderPipeline(
     await rights.check();
     await expect(previewButton).toBeEnabled();
     await previewButton.click();
-    await expect(preview).toContainText('1000 characters; 11 starter packs');
+    await expect(preview).toContainText('1000 characters; 10 starter packs');
     await expect(preview).toContainText('Common: 600; uncommon: 280; rare: 90');
     await expect(preview).toContainText('epic: 25; legendary: 5');
     const packRows = preview.getByRole('region', { name: 'Starter pack preview' }).getByRole('row');
-    await expect(packRows).toHaveCount(12);
+    await expect(packRows).toHaveCount(11);
     await realmWizardStep(page, 'Review');
     const scaleCreation = page.waitForResponse(
       (response) =>
@@ -203,12 +203,14 @@ export async function verifyProviderPipeline(
         scaleRealm,
       ])
     ).rows;
-    expect(packs).toHaveLength(11);
+    expect(packs).toHaveLength(10);
+    // New realms never get Adventure (Grand Voyage) automatically.
+    expect(packs.map((item) => item.name)).not.toContain('Grand Voyage');
     for (const pack of packs.filter((item) => item.category !== null)) {
       expect(majorCatalogCategories).toContain(pack.category);
       expect(pack.name).toBe(defaultPackName(pack.category));
     }
-    await expect(page.locator('.pack')).toHaveCount(11);
+    await expect(page.locator('.pack')).toHaveCount(10);
     await expect(page.locator('#collection')).toHaveCount(0);
     await expect(page.locator('#trades')).toHaveCount(0);
     await expect(page.getByRole('region', { name: 'Collector ranks' })).toHaveCount(0);

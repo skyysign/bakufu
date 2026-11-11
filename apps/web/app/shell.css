@@ -178,13 +178,35 @@
 .account-menu {
   position: relative;
 }
+/* One pill: the picture (a link to your profile) and the menu arrow. */
+.account-trigger-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.account-avatar-link {
+  display: grid;
+  border-radius: 50%;
+}
+.account-avatar-link:hover .avatar-dot,
+.account-avatar-link:focus-visible .avatar-dot {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.account-avatar-link[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.6;
+}
 .account-trigger {
   --btn-bg: transparent;
   --btn-fg: var(--text-2);
-  --btn-border: var(--border);
-  gap: 4px;
-  min-height: 44px;
-  padding: 4px 9px 4px 4px;
+  --btn-border: transparent;
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
   border-radius: 999px;
 }
 .account-trigger:hover:not(:disabled) {

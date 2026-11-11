@@ -183,6 +183,7 @@ export function RealmSettings({
           <RulesFields
             config={config}
             prefix="settings"
+            ownedRankLevels={view.ownedRankTrackLevels ?? undefined}
             onChanged={() => {
               setPreview(null);
               setError('');

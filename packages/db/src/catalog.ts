@@ -16,6 +16,7 @@ import {
   tiers,
   starterPackPlanSchema,
   withoutFameFloors,
+  withoutRecycleSafeguard,
   type Tier,
 } from '../../config/src/index';
 import {
@@ -141,6 +142,16 @@ export function prepareRealmCatalog(
   // Preserve immutable receipts from both pre-reward releases (config v6/v7).
   const legacyFingerprints: string[] = [];
   const v11 = withoutFameFloors(config);
+  // Before the recycling safeguard (config v13) every request was fingerprinted
+  // in the v12 shape.
+  if (
+    typeof input === 'object' &&
+    input !== null &&
+    'schemaVersion' in input &&
+    typeof input.schemaVersion === 'number' &&
+    input.schemaVersion <= 12
+  )
+    legacyFingerprints.push(fingerprintFor(withoutRecycleSafeguard(config)));
   if (
     typeof input === 'object' &&
     input !== null &&

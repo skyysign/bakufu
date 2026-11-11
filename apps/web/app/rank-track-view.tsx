@@ -4,13 +4,24 @@ import { useRouter } from 'next/navigation';
 import type { RankTracksView } from '@card-engine/db';
 import { GameIcon } from './game-art';
 
+/** 90 → "1 min 30 s", 4320 → "1 h 12 min". */
+export function durationText(seconds: number) {
+  const hours = Math.floor(seconds / 3600),
+    minutes = Math.floor((seconds % 3600) / 60),
+    rest = seconds % 60;
+  return (
+    [hours && `${hours} h`, minutes && `${minutes} min`, rest && `${rest} s`]
+      .filter(Boolean)
+      .join(' ') || '0 s'
+  );
+}
 function benefitsText(benefits: RankTracksView['benefits']) {
   return [
     benefits.packDiscount ? `${benefits.packDiscount} gems off every pack` : null,
     benefits.recycleBonus ? `+${benefits.recycleBonus} recycling gems` : null,
     benefits.wishlistSlots ? `+${benefits.wishlistSlots} wishlist slots` : null,
     benefits.cooldownReductionSeconds
-      ? `${benefits.cooldownReductionSeconds}s less cooldown`
+      ? `${durationText(benefits.cooldownReductionSeconds)} less cooldown`
       : null,
   ].filter(Boolean);
 }

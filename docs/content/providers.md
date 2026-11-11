@@ -244,8 +244,10 @@ Kodomo** tags, then fill the remaining automatic slots with the largest
 Characters, and a pool that is at least 90% identical to an already chosen pool
 is skipped as a near-duplicate (distinct demographic groups are always kept).
 Genres are never relabelled as demographics; every pack draws from its exact
-saved category. The default is ten category packs; admins can choose up to 30
-when creating a realm.
+saved category. Adventure (Grand Voyage) is never picked automatically: it mostly
+repeats Action and Fantasy. Admins can still choose it in **Choose myself** or add
+it later under Administration → Packs. The default is nine category packs plus
+All Characters (ten packs); admins can choose up to 30 when creating a realm.
 
 Existing realms keep every saved pack row, including older automatic genre packs
 that were previously hidden from the anime gallery; they are visible again and
@@ -358,7 +360,7 @@ The wizard no longer offers this as a separate option. In **Administration → N
 realm → Characters**, choose **Your JSON file**, use the **1,000-character test
 catalog** download link and upload that file (the **12-character demo catalog**
 link works the same way). It is a 277-KiB fictional dataset that generates up to
-ten major-category packs plus All Characters. The roster and series are original test content,
+nine major-category packs plus All Characters by default. The roster and series are original test content,
 not an anime database or a claim of provider coverage. It has stable UUIDs,
 source keys and a 100/250/650 rare/uncommon/common source-percentile cohort.
 

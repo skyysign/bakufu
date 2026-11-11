@@ -5,6 +5,7 @@ export const gameScreens = [
   'trades',
   'ranks',
   'wishlist',
+  'profile',
   'admin',
   'account',
 ] as const;
@@ -19,6 +20,7 @@ export const screenTitles: Record<GameScreen, string> = {
   trades: 'Your trades',
   ranks: 'Collector ranks',
   wishlist: 'Your wishlist',
+  profile: 'Players and profiles',
   admin: 'Realm administration',
   account: 'Your account',
 };

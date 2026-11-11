@@ -277,6 +277,8 @@ export async function removeCharacters(
         rules!,
         balance,
         value.rawConfig.schemaVersion,
+        // An admin removal refunds every owner; the player safeguard doesn't apply.
+        true,
       );
       balance = recycled.balance;
       refunds.push({ ...refund, recyclingId: recycled.recyclingId, credited: recycled.credited });

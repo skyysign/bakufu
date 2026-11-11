@@ -1,14 +1,24 @@
 'use client';
-import { useMemo, useState, type InputHTMLAttributes, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from 'react';
 import {
   characterValuesSchema,
   defaultConfig,
-  defaultRankTracks,
+  fitRankTracks,
   rankTracksSchema,
   tiers,
+  type RankTrackBasis,
+  type RankTrackBenefits,
   type RealmConfig,
   type Tier,
 } from '@card-engine/config';
+import { durationText } from './rank-track-view';
 
 /* -------------------------------------------------------------------------- */
 /* Settings layout primitives: every setting is one row, with its label and   */
@@ -472,6 +482,25 @@ function RarityGroup({
   );
 }
 
+function RecyclingGroup({ value, prefix }: { value: boolean; prefix: string }) {
+  return (
+    <SettingsGroup
+      id={`${prefix}-recycling-title`}
+      category="collection"
+      title="Recycling"
+      description="Players recycle cards for their value in gems; the character goes back into the packs."
+    >
+      <ToggleRow
+        id={`${prefix}-recycleSafeguard`}
+        name="recycleSafeguard"
+        label="Protect epic and legendary cards"
+        help="Recycling an epic or legendary card needs a second confirmation, and recycling several cards at once leaves them out."
+        defaultChecked={value}
+      />
+    </SettingsGroup>
+  );
+}
+
 function CharacterValueGroup({ value, prefix }: { value: RealmConfig['characterValues']; prefix: string }) {
   return (
     <SettingsGroup
@@ -626,18 +655,85 @@ function TradingGroup({ value, prefix }: { value: RealmConfig['trading']; prefix
   );
 }
 
+const basisOf = (config: RealmConfig): RankTrackBasis => ({
+  packPrice: config.packPrice,
+  cooldownSeconds: config.cooldownSeconds,
+  recycleRewards: config.recycleRewards,
+});
+/** The pack price, cooldown and card values currently typed into the form. */
+function readBasis(form: HTMLFormElement, fallback: RankTrackBasis): RankTrackBasis {
+  const data = new FormData(form);
+  const number = (key: string, otherwise: number) => {
+    const raw = data.get(key);
+    const value = Number(raw);
+    return raw === null || raw === '' || !Number.isFinite(value) ? otherwise : value;
+  };
+  return {
+    packPrice: number('packPrice', fallback.packPrice),
+    cooldownSeconds: number('cooldownSeconds', fallback.cooldownSeconds),
+    recycleRewards: Object.fromEntries(
+      tiers.map((tier) => [tier, number(`reward-${tier}`, fallback.recycleRewards[tier] ?? 0)]),
+    ),
+  };
+}
+function perksText(benefits: RankTrackBenefits) {
+  return [
+    benefits.packDiscount && `${benefits.packDiscount.toLocaleString()} gems off packs`,
+    benefits.recycleBonus && `+${benefits.recycleBonus.toLocaleString()} gems per recycling`,
+    benefits.wishlistSlots && `+${benefits.wishlistSlots} wishlist slots`,
+    benefits.cooldownReductionSeconds &&
+      `${durationText(benefits.cooldownReductionSeconds)} less cooldown`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 function RankTrackGroup({
+  config,
   value,
   prefix,
+  rulesVersion,
+  ownedLevels,
   onChanged,
 }: {
+  config: RealmConfig;
   value: RealmConfig['rankTracks'];
   prefix: string;
+  rulesVersion: number;
+  ownedLevels: Record<string, number>;
   onChanged?: () => void;
 }) {
   const [enabled, setEnabled] = useState(value.enabled),
     [tracks, setTracks] = useState(JSON.stringify(value.tracks, null, 2));
-  const recommendedText = JSON.stringify(defaultRankTracks.tracks, null, 2);
+  // Recommended ranks are measured against the rules in this form, live.
+  const anchor = useRef<HTMLDivElement>(null);
+  const [basis, setBasis] = useState(() => basisOf(config));
+  useEffect(() => {
+    const form = anchor.current?.closest('form');
+    if (!form) return;
+    const update = () =>
+      setBasis((current) => {
+        const next = readBasis(form, basisOf(config));
+        return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+      });
+    update();
+    form.addEventListener('input', update);
+    return () => form.removeEventListener('input', update);
+  }, [config, rulesVersion]);
+  const fittedText = useMemo(
+    () => JSON.stringify(fitRankTracks(value, basis, ownedLevels).tracks, null, 2),
+    [value, basis, ownedLevels],
+  );
+  // Ranks that matched the recommendation keep following the rules as they
+  // change; edited ranks stay as they are until "Fit ranks" is chosen.
+  const previousFit = useRef(fittedText);
+  useEffect(() => {
+    const previous = previousFit.current;
+    previousFit.current = fittedText;
+    if (previous !== fittedText)
+      setTracks((current) => (sameJson(current, JSON.parse(previous)) ? fittedText : current));
+  }, [fittedText]);
+  const owned = Object.values(ownedLevels).some((level) => level > 0);
   const summary = useMemo(() => {
     try {
       const parsed = rankTracksSchema.parse({ enabled: true, tracks: JSON.parse(tracks) });
@@ -647,6 +743,7 @@ function RankTrackGroup({
         levels: track.levels.length,
         from: Math.min(...track.levels.map((level) => level.cost)),
         to: Math.max(...track.levels.map((level) => level.cost)),
+        perks: perksText(track.levels[track.levels.length - 1].benefits),
       }));
     } catch {
       return null;
@@ -657,19 +754,20 @@ function RankTrackGroup({
       id={`${prefix}-ranks-title`}
       category="ranks"
       title="Collector ranks"
-      description="Players spend gems on rank levels for lasting perks such as pack discounts. Owned levels are never taken away."
+      description="Players spend gems on rank levels for lasting perks. Recommended ranks follow your pack price, opening cooldown and common card value: costs are counted in packs, and each perk is a share of what it improves. Owned levels are never taken away."
       action={
         <ResetButton
-          visible={!enabled || !sameJson(tracks, defaultRankTracks.tracks)}
-          label="Use the recommended six ranks"
+          visible={!enabled || !sameJson(tracks, JSON.parse(fittedText))}
+          label="Fit ranks to these rules"
           onClick={() => {
             setEnabled(true);
-            setTracks(recommendedText);
+            setTracks(fittedText);
             onChanged?.();
           }}
         />
       }
     >
+      <div ref={anchor} hidden />
       <ToggleRow
         id={`${prefix}-rankTracksEnabled`}
         name="rankTracksEnabled"
@@ -690,12 +788,19 @@ function RankTrackGroup({
                 {track.from === track.to
                   ? `${track.from.toLocaleString()} gems`
                   : `${track.from.toLocaleString()}–${track.to.toLocaleString()} gems`}
+                {track.perks && <> · top level: {track.perks}</>}
               </span>
             </li>
           ))}
         </ul>
       ) : (
         <p className="settings-inline-error">The rank JSON below is not valid yet.</p>
+      )}
+      {owned && (
+        <p className="setting-help">
+          Levels players already bought keep their costs and perks when ranks are fitted; only the
+          levels nobody owns yet change.
+        </p>
       )}
       <details className="settings-json">
         <summary>Edit ranks as JSON</summary>
@@ -723,24 +828,42 @@ function RankTrackGroup({
 }
 
 /** Every gameplay rule group; each one carries its category for tabbed views. */
+const noOwnedLevels: Record<string, number> = {};
 export function RulesFields({
   config,
   prefix,
   onChanged,
+  ownedRankLevels = noOwnedLevels,
 }: {
   config: RealmConfig;
   prefix: string;
   onChanged?: () => void;
+  /** Highest level any player owns per rank track (kept when ranks are fitted). */
+  ownedRankLevels?: Record<string, number>;
 }) {
+  // Bumped when a group changes values without typing (a "recommended" button).
+  const [rulesVersion, setRulesVersion] = useState(0);
+  const changed = () => {
+    onChanged?.();
+    setRulesVersion((version) => version + 1);
+  };
   return (
     <>
       <EconomyGroup config={config} prefix={prefix} />
       <GemRewardGroup value={config.gemRewards} prefix={prefix} onChanged={onChanged} />
-      <RarityGroup config={config} prefix={prefix} onChanged={onChanged} />
+      <RarityGroup config={config} prefix={prefix} onChanged={changed} />
+      <RecyclingGroup value={config.recycleSafeguard} prefix={prefix} />
       <CharacterValueGroup value={config.characterValues} prefix={prefix} />
       <WishlistGroup value={config.wishlist} prefix={prefix} />
       <ProgressionGroup value={config.progression} prefix={prefix} />
-      <RankTrackGroup value={config.rankTracks} prefix={prefix} onChanged={onChanged} />
+      <RankTrackGroup
+        config={config}
+        value={config.rankTracks}
+        prefix={prefix}
+        rulesVersion={rulesVersion}
+        ownedLevels={ownedRankLevels}
+        onChanged={onChanged}
+      />
       <TradingGroup value={config.trading} prefix={prefix} />
     </>
   );
@@ -804,6 +927,7 @@ export function readRules(form: FormData) {
       expiresAfterMinutes: number('tradeExpiry'),
     },
     rankTracks,
+    recycleSafeguard: form.get('recycleSafeguard') === 'on',
     gemRewards: {
       enabled: form.get('gemRewardsEnabled') === 'on',
       amount: number('gemRewardAmount'),

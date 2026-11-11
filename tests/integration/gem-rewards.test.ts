@@ -339,7 +339,8 @@ describe('transactional timed gem claims', () => {
         (await legacy.query('SELECT config FROM realms WHERE id=$1', [id])).rows[0].config,
       ).toEqual({
         ...previous,
-        schemaVersion: 12,
+        schemaVersion: 13,
+        recycleSafeguard: true,
         fameFloors: disabledFameFloors,
         legacyPurchasesRetired: false,
         rankTracks: { enabled: false, tracks: [] },

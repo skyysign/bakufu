@@ -25,9 +25,12 @@ exactly one owner. Bakufu is self-hosted, so your community owns its data.
 - **Packs** generated from the roster (demographics, genres, eras, Waifus and
   Husbandos) with 1/5/10 openings, tiered reveal animations and sounds, and a
   live feed of big pulls.
-- **Collection**, character glossary, wishlists, recycling (also straight from
-  the opening results), timed gem claims,
-  collector ranks, trading between players and a gem market.
+- **Collection**, character glossary, wishlists, recycling (one card, several at
+  once, or straight from the opening results; epic and legendary cards can be
+  protected), timed gem claims, collector ranks fitted to the realm's rules,
+  trading between players and a gem market.
+- **Player profiles** with a showcase, page colour and optional wishlist, a
+  players directory with a leaderboard, and "Propose a trade" from any profile.
 - **Discord sign-in** as the main login, plus optional `/bakufu` slash commands.
 - **Administration**: game rules with reviewed previews, packs, characters,
   rarity (fame floors and manual tiers), reveal sounds per rarity or character,
@@ -100,6 +103,7 @@ Back up before every update: [backups](docs/deployment/backups.md),
   [progression](docs/gameplay/progression.md),
   [upgrades](docs/gameplay/upgrades.md),
   [members](docs/gameplay/members.md),
+  [player profiles](docs/gameplay/profiles.md),
   [joining a realm](docs/gameplay/admission.md),
   [game rules](docs/gameplay/settings.md),
   [player collections](docs/gameplay/admin-collections.md)

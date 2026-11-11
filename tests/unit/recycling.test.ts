@@ -14,7 +14,8 @@ describe('versioned recycling rules', () => {
     const upgraded = parseRealmConfig(legacyConfig);
     expect(upgraded).toEqual({
       ...legacyConfig,
-      schemaVersion: 12,
+      schemaVersion: 13,
+      recycleSafeguard: true,
       fameFloors: disabledFameFloors,
       legacyPurchasesRetired: false,
       rankTracks: defaultConfig.rankTracks,

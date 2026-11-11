@@ -10,6 +10,12 @@ export type GameSearchParams = Promise<{
   authError?: string;
   task?: string;
   pack?: string;
+  /** Profile screen: the trade code of the player to show. */
+  player?: string;
+  /** Profile screen: "players" opens the directory. */
+  view?: string;
+  /** Trades screen: the trade code of the player to start an offer with. */
+  with?: string;
 }>;
 export async function GamePage({
   searchParams,
@@ -47,6 +53,9 @@ export async function GamePage({
       screen={screen}
       initialTask={params.task}
       initialPack={typeof params.pack === 'string' ? params.pack : undefined}
+      profilePlayer={typeof params.player === 'string' ? params.player : undefined}
+      profileView={params.view === 'players' ? 'players' : 'profile'}
+      tradePartner={typeof params.with === 'string' ? params.with : undefined}
     />
   );
 }

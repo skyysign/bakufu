@@ -29,6 +29,7 @@ export function Brand({ disabled = false, realmId }: { disabled?: boolean; realm
   );
 }
 
+// Profiles and Players are reached through the profile picture and the account menu.
 const playScreens: { screen: GameScreen; label: string; icon: IconName }[] = [
   { screen: 'packs', label: 'Packs', icon: 'packs' },
   { screen: 'collection', label: 'Collection', icon: 'collection' },
@@ -118,18 +119,35 @@ function AccountMenu({
   const displayName = profile?.displayName ?? profile?.username ?? account.email ?? 'Collector';
   return (
     <div className="header-player account-menu" ref={root}>
-      <button
-        ref={trigger}
-        type="button"
-        className="account-trigger"
-        aria-label="Account menu"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
-      >
-        <DiscordAvatar profile={profile} className="avatar-dot" />
-        <GameIcon name="chevron" className="account-chevron" />
-      </button>
+      {/* The picture opens your profile; the arrow opens the account menu. */}
+      <div className="account-trigger-group">
+        <Link
+          scroll={false}
+          prefetch={false}
+          href={screenHref('profile', view?.id)}
+          className="account-avatar-link"
+          aria-label="Your profile"
+          title="Your profile"
+          aria-disabled={locked || undefined}
+          onClick={(event) => {
+            if (locked) event.preventDefault();
+            else setOpen(false);
+          }}
+        >
+          <DiscordAvatar profile={profile} className="avatar-dot" />
+        </Link>
+        <button
+          ref={trigger}
+          type="button"
+          className="account-trigger"
+          aria-label="Account menu"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen(!open)}
+        >
+          <GameIcon name="chevron" className="account-chevron" />
+        </button>
+      </div>
       <div id={panelId} className="account-panel" hidden={!open}>
         <div className="account-identity">
           <strong>{displayName}</strong>
@@ -152,6 +170,28 @@ function AccountMenu({
           </label>
         )}
         <div className="account-menu-links">
+          {view && (
+            <>
+              <MenuLink
+                href={screenHref('profile', view.id)}
+                current={false}
+                locked={locked}
+                icon="user"
+                onNavigate={() => setOpen(false)}
+              >
+                Your profile
+              </MenuLink>
+              <MenuLink
+                href={`${screenHref('profile', view.id)}&view=players`}
+                current={false}
+                locked={locked}
+                icon="search"
+                onNavigate={() => setOpen(false)}
+              >
+                Players
+              </MenuLink>
+            </>
+          )}
           {canAdmin && adminMode && (
             <MenuLink
               href={screenHref('admin', view?.id)}

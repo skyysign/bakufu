@@ -428,6 +428,8 @@ export type RealmView = {
   upgrade: ReturnType<typeof upgradeView>;
   collectorRank: ReturnType<typeof collectorRankView>;
   rankTracks: ReturnType<typeof rankTracksView>;
+  /** Admins only: the highest level any member owns per rank track. */
+  ownedRankTrackLevels: Record<string, number> | null;
   gemReward: ReturnType<typeof gemRewardView>;
   effectiveWishlistSlots: number;
   effectiveRecycleRewards: RealmConfig['recycleRewards'];
@@ -624,6 +626,17 @@ export async function getRealmView(
           await purchasedRankTrackLevels(tx, realmId, actorId),
           member.balance,
         ),
+        ownedRankTrackLevels:
+          member.role === 'admin' && realm.config.schemaVersion >= 10
+            ? Object.fromEntries(
+                (
+                  await tx.query(
+                    'SELECT track_id,max(level)::integer AS level FROM rank_track_purchases WHERE realm_id=$1 GROUP BY track_id ORDER BY track_id',
+                    [realmId],
+                  )
+                ).rows.map((row) => [row.track_id, row.level]),
+              )
+            : null,
         gemReward:
           realm.config.schemaVersion >= 8
             ? await gemRewardState(tx, realmId, actorId, config)

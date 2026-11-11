@@ -42,6 +42,7 @@ import { verifyAdminCollections } from '../tests/support/admin-collections-brows
 import { verifyRarityAdmin } from '../tests/support/rarity-browser';
 import { verifyRosterTools } from '../tests/support/roster-tools-browser';
 import { verifyPlayerRework } from '../tests/support/rework-browser';
+import { verifyProfiles } from '../tests/support/profile-browser';
 import { verifyPasswordChanges } from '../tests/support/password-browser';
 import { verifyPackReveals } from '../tests/support/reveal-browser';
 import { verifyRevealLoading } from '../tests/support/reveal-loading-browser';
@@ -379,7 +380,7 @@ try {
   await catalogPage.getByRole('button', { name: 'Preview catalog and packs' }).click();
   await expect(catalogReview).toContainText('Original CSV catalog');
   await expect(catalogReview).toContainText('4 characters; 3 starter packs');
-  await expect(catalogPage.getByLabel('Maximum category packs')).toHaveValue('10');
+  await expect(catalogPage.getByLabel('Maximum category packs')).toHaveValue('9');
   await catalogPage.getByLabel('Category pack selection').selectOption('manual');
   await catalogPage
     .getByRole('checkbox', { name: 'wind walkers (2 characters)', exact: true })
@@ -623,6 +624,14 @@ try {
       exact: true,
     })
     .click();
+  // The recycling safeguard asks again for an epic or legendary card.
+  if (['epic', 'legendary'].includes(receipt.characters[0].tier)) {
+    expect(recycleRequests).toHaveLength(0);
+    await page
+      .getByRole('group', { name: `Confirm recycling ${receipt.characters[0].name}` })
+      .getByRole('button', { name: /^Confirm/ })
+      .click();
+  }
   await page.getByRole('button', { name: 'Retry recycling', exact: true }).click();
   await expect(page.locator('.character')).toHaveCount(0);
   expect(recycleRequests[0]).toEqual(recycleRequests[1]);
@@ -631,8 +640,8 @@ try {
   const wished = (await getRealmView(db, admin, realmId)).catalog.find(
     (character) => character.tier === 'common',
   )!;
-  await page.getByRole('button', { name: 'Browse characters', exact: true }).click();
-  const wishPicker = page.getByRole('dialog', { name: 'Choose a wishlist character', exact: true });
+  await page.getByRole('button', { name: /^Browse characters/ }).click();
+  const wishPicker = page.getByRole('dialog', { name: 'Choose wishlist characters', exact: true });
   await wishPicker.getByLabel('Search cards by name or series').fill(wished.name);
   await wishPicker.getByRole('button', { name: 'Select ' + wished.name, exact: true }).click();
   const wishRequests: unknown[] = [];
@@ -643,7 +652,7 @@ try {
     if (wishRequests.length === 1) await route.abort('failed');
     else await route.fulfill({ response: result });
   });
-  await wishPicker.getByRole('button', { name: 'Choose character', exact: true }).click();
+  await wishPicker.getByRole('button', { name: 'Add 1 to wishlist', exact: true }).click();
   const lockedPacks = page.getByRole('link', { name: 'Packs', exact: true });
   await expect(lockedPacks).toHaveAttribute('aria-disabled', 'true');
   await lockedPacks.click({ force: true });
@@ -943,7 +952,12 @@ try {
   await page.unroute('**/api/members?**');
   // Both sides at once: A gives a card and 5 gems and asks for B's card and 2 gems.
   const give = trades.getByRole('region', { name: 'You give', exact: true });
-  await give.getByLabel('Gems', { exact: true }).fill('5');
+  // Typed key by key, the amount must not keep a leading 0 ("05").
+  const giveGems = give.getByLabel('Gems', { exact: true });
+  await expect(giveGems).toHaveValue('');
+  await giveGems.click();
+  await page.keyboard.type('5');
+  await expect(giveGems).toHaveValue('5');
   await give.getByRole('button', { name: /^Choose cards/ }).click();
   const offeredCards = page.getByRole('dialog', { name: 'Choose cards to give', exact: true });
   await offeredCards
@@ -1249,6 +1263,7 @@ try {
   await guestContext.close();
   await verifyPasswordChanges(browser, db, origin, realmId);
   await verifyPlayerRework(browser, db, origin);
+  await verifyProfiles(browser, db, origin);
   await verifyProviderPipeline(browser, db, origin, 'browser-admin@example.test', password);
   await verifyBatchPlay(browser, db, origin, admin, 'browser-admin@example.test', password);
   await verifyRevealLoading(browser, db, origin, admin, 'browser-admin@example.test', password);
@@ -1268,7 +1283,7 @@ try {
   expect(pageErrors).toEqual([]);
   await context.close();
   console.log(
-    'Browser checks passed: physical cards/inspection, consecutive cooldown-free 1/5/10 openings, popularity/demand values, 1000-character glossary, visual trade/wishlist pickers, single-click collector ranks/recycling and replay, fame floors/manual tiers, opening recycling/roster growth/character removal, five-tier motion/sound, Discord avatars/fallback, route scroll recovery, atomic pack loading/reveals, XP/gem timers, market/trading/retry receipts, player archive v12, account/Discord/provider/catalog flows, RBAC/CSRF and desktop/mobile accessibility.',
+    'Browser checks passed: physical cards/inspection, consecutive cooldown-free 1/5/10 openings, popularity/demand values, 1000-character glossary, visual trade/wishlist pickers, single-click collector ranks/recycling and replay, fame floors/manual tiers, opening recycling/roster growth/character removal, five-tier motion/sound, Discord avatars/fallback, route scroll recovery, atomic pack loading/reveals, XP/gem timers, market/trading/retry receipts, player archive v12, player profiles/directory, bulk recycling, account/Discord/provider/catalog flows, RBAC/CSRF and desktop/mobile accessibility.',
   );
 } finally {
   await browser?.close();

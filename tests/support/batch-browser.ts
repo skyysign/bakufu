@@ -317,6 +317,32 @@ export async function verifyBatchPlay(
     await page.reload();
     await expect(page.locator('.header-recharge')).toContainText('Next gems in');
     expect((await getRealmView(db, admin, realm)).balance).toBe(865);
+
+    // The chosen collection sort is remembered as the default.
+    const collection = page.locator('#collection');
+    await collection.getByLabel('Sort your collection').selectOption('rarity');
+    await page.reload();
+    await expect(collection.getByLabel('Sort your collection')).toHaveValue('rarity');
+    // Recycling several cards at once: every card shown except the protected
+    // epic and legendary ones, in one confirmed step.
+    const held = (await getRealmView(db, admin, realm)).cards;
+    const guarded = held.filter((card) => ['epic', 'legendary'].includes(card.tier)).length,
+      chosen = held.length - guarded;
+    await collection.getByRole('button', { name: 'Recycle several', exact: true }).click();
+    const bar = page.getByRole('region', { name: 'Recycle several cards' });
+    await bar.getByRole('button', { name: `Select all shown (${chosen})`, exact: true }).click();
+    await expect(bar.getByRole('status')).toContainText(`${chosen} selected`);
+    await expect(collection.locator('.collection-card.selected')).toHaveCount(chosen);
+    await page.screenshot({ path: '.test-data/bulk-selection-mobile.png' });
+    await bar.getByRole('button', { name: 'Recycle selected', exact: true }).click();
+    await bar.getByRole('button', { name: `Recycle ${chosen}`, exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: `${chosen} ${chosen === 1 ? 'card' : 'cards'} recycled` }),
+    ).toBeVisible();
+    await expect
+      .poll(async () => (await getRealmView(db, admin, realm)).cards.length)
+      .toBe(guarded);
+    await page.screenshot({ path: '.test-data/bulk-recycling-mobile.png' });
     expect(errors).toEqual([]);
     expect(external).toEqual([]);
   } finally {

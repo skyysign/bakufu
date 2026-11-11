@@ -21,7 +21,7 @@ import {
   unlockRevealAudio,
 } from './reveal-audio';
 import { RevealBackdrop } from './reveal-backdrop';
-import type { Tier } from '@card-engine/config';
+import { recycleNeedsConfirmation, type Tier } from '@card-engine/config';
 import './inline-reveal.css';
 
 export type SuccessfulOpening = Extract<OpeningResult, { ok: true }>;
@@ -223,6 +223,7 @@ export function PackReveal({
   appearance,
   customSounds,
   onRecycle,
+  safeguard = false,
 }: {
   receipt: SuccessfulOpening;
   packName: string;
@@ -235,8 +236,13 @@ export function PackReveal({
     tiers: Partial<Record<Tier, string>>;
     characters: Record<string, string>;
   };
-  /** Recycles cards from this opening; resolves with the gems credited per card ID. */
-  onRecycle?: (cardIds: string[]) => Promise<Record<string, number>>;
+  /**
+   * Recycles cards from this opening; resolves with the gems credited per card
+   * ID. `confirmed` marks a protected (epic/legendary) card the player confirmed.
+   */
+  onRecycle?: (cardIds: string[], confirmed?: boolean) => Promise<Record<string, number>>;
+  /** The realm's recycling safeguard: epic and legendary cards need a second click. */
+  safeguard?: boolean;
 }) {
   const primary = useRef<HTMLButtonElement>(null),
     summaryHeading = useRef<HTMLHeadingElement>(null);
@@ -256,17 +262,24 @@ export function PackReveal({
   const [recycled, setRecycled] = useState<Record<string, number>>({}),
     [recycling, setRecycling] = useState<string | null>(null),
     [confirmTier, setConfirmTier] = useState<Tier | null>(null),
+    [confirmCard, setConfirmCard] = useState<string | null>(null),
     [recycleError, setRecycleError] = useState(''),
     [recycleNote, setRecycleNote] = useState('');
   const recycleValue = (i: number) =>
     characterValues?.[receipt.characters[i].id]?.recycleValue ?? null;
-  async function recycleCards(cardIds: string[], busyKey: string, label: string) {
+  async function recycleCards(
+    cardIds: string[],
+    busyKey: string,
+    label: string,
+    confirmed = false,
+  ) {
     if (!onRecycle || recycling) return;
     setRecycling(busyKey);
     setRecycleError('');
     setRecycleNote('');
+    setConfirmCard(null);
     try {
-      const credits = await onRecycle(cardIds);
+      const credits = await onRecycle(cardIds, confirmed);
       const credited = Object.values(credits).reduce((sum, value) => sum + value, 0);
       setRecycled((current) => ({ ...current, ...credits }));
       setConfirmTier(null);
@@ -509,6 +522,45 @@ export function PackReveal({
                       <GameIcon name="check" /> Recycled +
                       {recycled[receipt.cardIds[i]].toLocaleString()}
                     </p>
+                  ) : confirmCard === receipt.cardIds[i] ? (
+                    <div
+                      className="recycle-confirm"
+                      role="group"
+                      aria-label={`Confirm recycling ${character.name}`}
+                    >
+                      <button
+                        type="button"
+                        className="wide recycle-button"
+                        title={`Recycle this ${character.tier} card`}
+                        autoFocus
+                        disabled={!!recycling}
+                        onClick={() =>
+                          void recycleCards(
+                            [receipt.cardIds[i]],
+                            receipt.cardIds[i],
+                            character.name,
+                            true,
+                          )
+                        }
+                      >
+                        {recycling === receipt.cardIds[i] ? 'Recycling…' : 'Confirm'}
+                        {recycleValue(i) !== null && (
+                          <span className="recycle-reward">
+                            +{recycleValue(i)!.toLocaleString()}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary icon-button"
+                        aria-label="Cancel"
+                        title="Keep this card"
+                        disabled={!!recycling}
+                        onClick={() => setConfirmCard(null)}
+                      >
+                        <GameIcon name="close" />
+                      </button>
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -518,7 +570,13 @@ export function PackReveal({
                       }`}
                       disabled={!!recycling}
                       onClick={() =>
-                        void recycleCards([receipt.cardIds[i]], receipt.cardIds[i], character.name)
+                        recycleNeedsConfirmation({ recycleSafeguard: safeguard }, character.tier)
+                          ? setConfirmCard(receipt.cardIds[i])
+                          : void recycleCards(
+                              [receipt.cardIds[i]],
+                              receipt.cardIds[i],
+                              character.name,
+                            )
                       }
                     >
                       {recycling === receipt.cardIds[i] ? (

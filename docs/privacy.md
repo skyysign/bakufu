@@ -47,7 +47,17 @@ only that player's active collection, recycling history, and progression/XP
 history within one realm.
 Upgrade purchase history retains the player's realm-scoped rank, cost/effect,
 request and purchase IDs, and timestamp for spending audits and safe retries.
-Wishlist entries and their change receipts are private to the player and realm.
+Wishlist entries and their change receipts are private to the player and realm,
+unless the player turns on **Show my wishlist** on their
+[profile page](gameplay/profiles.md); then members of that realm see the
+wished characters there (never the receipts).
+Profile pages are visible only to members of the same realm. They show the
+player's Discord name and picture, level, owned collector ranks, collection
+statistics and cards (which trading already shows to members), and what the
+player chose to add: a text of up to 280 characters, a page colour and up to
+six showcased cards. Gems, email addresses and provider IDs are never part of
+a profile or of the players directory. The chosen page is stored per realm,
+included in that player's archive and in encrypted backups.
 They retain chosen character IDs, entry/request IDs, desired states, and
 timestamps for retries and recovery. Personal exports include only that
 player's current entries and rules; encrypted backups also preserve receipts.

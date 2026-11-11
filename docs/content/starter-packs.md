@@ -9,7 +9,8 @@ progress. No environment changes, external services, or additional assets are ne
    select **Preview catalog and packs**. The wizard moves to the **Packs** step and
    loads the catalog's category counts.
 2. In **Starter packs** on that step, set **Minimum characters per pack pool** (default 2)
-   and **Maximum category packs** (default 10). Choose **Choose categories and
+   and **Maximum category packs** (default 9, so a new realm has ten packs with
+   All Characters). Choose **Choose categories and
    pack names** under **Category pack selection**.
 3. Search the catalog categories, check those you want, and edit **Pack name for
    …**. Search shows the first 50 matches; refine the search for larger catalogs.

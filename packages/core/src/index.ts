@@ -448,6 +448,11 @@ export function realmSettingsImpact(
   compare('Timed gem claims', current.gemRewards, proposed.gemRewards);
   compare('Collector rank progression', current.rankTracks, proposed.rankTracks);
   compare('Character values', current.characterValues, proposed.characterValues);
+  compare(
+    'Recycling safeguard (epic and legendary)',
+    current.recycleSafeguard ? 'On' : 'Off',
+    proposed.recycleSafeguard ? 'On' : 'Off',
+  );
   compare('Cooldown (seconds)', current.cooldownSeconds, proposed.cooldownSeconds);
   compare('Minimum catalog pool', current.minimumPoolSize, proposed.minimumPoolSize);
   compare('Maximum category packs', current.maximumCategoryPacks, proposed.maximumCategoryPacks);

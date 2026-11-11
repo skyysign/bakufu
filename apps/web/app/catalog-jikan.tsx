@@ -443,7 +443,7 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
                 aria-valuetext={`${target.toLocaleString()} characters`}
                 style={
                   {
-                    '--fill': `${(nearestStop(target) / (rosterStops.length - 1)) * 100}%`,
+                    '--fill': nearestStop(target) / (rosterStops.length - 1),
                   } as CSSProperties
                 }
                 onChange={(event) => {
@@ -453,11 +453,25 @@ export function CatalogJikan({ onStart, onEdit, onLoaded, onFailure }: Props) {
                   reset(media, next);
                 }}
               />
+              {/* Each label sits where the handle is for that size: the stops are uneven. */}
               <div className="roster-size-scale" aria-hidden="true">
-                <span>100</span>
-                <span>{(1000).toLocaleString()}</span>
-                <span>{(10000).toLocaleString()}</span>
-                <span>{rosterStops[rosterStops.length - 1].toLocaleString()}</span>
+                {[
+                  ...new Set([
+                    ...[100, 1000, 10000].filter((size) => rosterStops.includes(size)),
+                    rosterStops[rosterStops.length - 1],
+                  ]),
+                ].map((size) => (
+                  <span
+                    key={size}
+                    style={
+                      {
+                        '--at': rosterStops.indexOf(size) / (rosterStops.length - 1),
+                      } as CSSProperties
+                    }
+                  >
+                    {size.toLocaleString()}
+                  </span>
+                ))}
               </div>
             </div>
             <div>

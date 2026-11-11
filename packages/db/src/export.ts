@@ -10,6 +10,7 @@ import {
 import { purchasedCollectorRank } from './rank-state';
 import { ownRealmAdmission, playerAdmissionSchema } from './admission';
 import { discordProfileSchema, ownDiscordProfile } from './member-profiles';
+import { ownProfilePage } from './profile-pages';
 import { z } from 'zod';
 import { providerArtworkSchema } from '../../importers/src/artwork';
 import {
@@ -23,6 +24,7 @@ import {
   wishlistSchema,
   tradingSchema,
   characterValuesSchema,
+  profilePageSchema,
 } from '../../config/src/index';
 import { xpProgress } from '../../core/src/index';
 import { requireMember } from './game';
@@ -483,6 +485,9 @@ export const playerArchiveSchema = playerArchiveV11Base
   .omit({ schemaVersion: true })
   .extend({
     schemaVersion: z.literal(12),
+    // The player's own profile page, present once they customized it (added
+    // without a new archive version: older v12 archives simply lack it).
+    profilePage: profilePageSchema.optional(),
     characterValueRules: characterValuesSchema,
     characterValues: z.record(z.uuid(), characterValueSchema),
     recyclingValuations: z.array(
@@ -494,7 +499,14 @@ export const playerArchiveSchema = playerArchiveV11Base
     ),
   })
   .superRefine((archive, ctx) => {
-    const { characterValueRules, characterValues, recyclingValuations, ...legacy } = archive;
+    const {
+      characterValueRules,
+      characterValues,
+      recyclingValuations,
+      profilePage: _profilePage,
+      ...legacy
+    } = archive;
+    void _profilePage;
     const previous = playerArchiveV11Schema.safeParse({ ...legacy, schemaVersion: 11 });
     if (!previous.success)
       for (const issue of previous.error.issues)
@@ -763,6 +775,7 @@ export async function exportPlayer(db: Database, actorId: string, realmId: strin
           [realmId, actorId],
         )
       ).rows.map((row) => ({ recyclingId: row.id, rules: row.rules, quote: row.quote }));
+      const profilePage = await ownProfilePage(tx, realmId, actorId);
       return playerArchiveSchema.parse({
         schemaVersion: 12,
         characterValueRules: config.characterValues,
@@ -781,6 +794,7 @@ export async function exportPlayer(db: Database, actorId: string, realmId: strin
         marketListings,
         realmAdmission: await ownRealmAdmission(tx, realmId, actorId),
         discordProfile: await ownDiscordProfile(tx, actorId),
+        ...(profilePage ? { profilePage } : {}),
         kind: 'card-engine-player-archive',
         exportedAt: new Date().toISOString(),
         realm,

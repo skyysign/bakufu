@@ -403,7 +403,11 @@ input[type='checkbox'].switch:disabled {
   width: 220px;
   max-width: 100%;
 }
+/* --fill is the handle position from 0 to 1; the handle's centre travels
+   from half its width to the width minus half of it. */
 input[type='range'] {
+  --thumb: 22px;
+  --fill-to: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--fill, 0));
   width: 100%;
   min-height: 0;
   height: 28px;
@@ -417,13 +421,13 @@ input[type='range'] {
 input[type='range']::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #8b5cf6, #d946ef) 0 0 / var(--fill, 0%) 100% no-repeat,
+  background: linear-gradient(90deg, #8b5cf6, #d946ef) 0 0 / var(--fill-to) 100% no-repeat,
     var(--surface-3);
 }
 input[type='range']::-moz-range-track {
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #8b5cf6, #d946ef) 0 0 / var(--fill, 0%) 100% no-repeat,
+  background: linear-gradient(90deg, #8b5cf6, #d946ef) 0 0 / var(--fill-to) 100% no-repeat,
     var(--surface-3);
 }
 input[type='range']::-webkit-slider-thumb {
@@ -449,12 +453,28 @@ input[type='range']:focus-visible {
   border-radius: 6px;
 }
 .roster-size-scale {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 18px;
   margin-top: -4px;
   color: var(--text-3);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+.roster-size-scale > span {
+  position: absolute;
+  top: 0;
+  left: calc(11px + (100% - 22px) * var(--at));
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.roster-size-scale > span:first-child {
+  left: 0;
+  transform: none;
+}
+.roster-size-scale > span:last-child {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 /* A fieldset rendered as a settings group (legend as the group title). */

@@ -30,9 +30,12 @@ const editions: {
   motif: PackMotif;
   demographic?: boolean;
   previousNames?: string[];
+  /** Left out of the automatic starter packs; admins can still choose it. */
+  manualOnly?: boolean;
 }[] = [
   { categories: ['Action'], name: 'Battle Arena', motif: 'battle' },
-  { categories: ['Adventure'], name: 'Grand Voyage', motif: 'voyage' },
+  // Adventure mostly repeats Action and Fantasy, so new realms skip it.
+  { categories: ['Adventure'], name: 'Grand Voyage', motif: 'voyage', manualOnly: true },
   { categories: ['Fantasy'], name: 'Fantasy Realms', motif: 'fantasy' },
   { categories: ['Romance'], name: 'Heartstrings', motif: 'romance' },
   { categories: ['Mystery'], name: 'Detective Files', motif: 'mystery' },
@@ -170,6 +173,11 @@ export function isMediumCategory(category: string): boolean {
 
 export function isDemographicCategory(category: string): boolean {
   return byCategory.get(normalized(category))?.demographic === true;
+}
+
+/** Categories the automatic starter packs skip (Adventure); they stay available by hand. */
+export function isManualOnlyCategory(category: string): boolean {
+  return byCategory.get(normalized(category))?.manualOnly === true;
 }
 
 type CategorizedCharacter = { sourceKey: string; categories: string[] };

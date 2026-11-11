@@ -8,6 +8,7 @@ import { validateRankTrackBackup } from './rank-track-backup';
 import { validateEconomyRebalances } from './economy-preset';
 import { validateTierAdjustments } from './tier-adjustments';
 import { validateCharacterRemovals } from './character-removal';
+import { validateProfilePages } from './profile-pages';
 import { effectiveMemberConfig } from './rank-track-state';
 import { validateMarketBackup } from './market-backup';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from 'node:crypto';
@@ -345,6 +346,15 @@ const columns = {
     'updated_by',
     'updated_at',
   ],
+  profile_pages: [
+    'realm_id',
+    'account_id',
+    'bio',
+    'theme',
+    'showcase',
+    'show_wishlist',
+    'updated_at',
+  ],
 } as const;
 const tableNames = Object.keys(columns) as (keyof typeof columns)[];
 type Migration = { name: string; checksum: string };
@@ -360,6 +370,8 @@ function columnsForMigrations(
   )
     throw new Error('Unsupported backup schema. Use the matching source release.');
   const source: Partial<Record<keyof typeof columns, readonly string[]>> = { ...columns };
+  if (!migrations.some((migration) => migration.name === '0032_profile_pages.sql'))
+    delete source.profile_pages;
   if (!migrations.some((migration) => migration.name === '0030_trade_proposals.sql'))
     source.trades = columns.trades.filter((field) => field !== 'protocol');
   if (!migrations.some((migration) => migration.name === '0029_character_removals.sql')) {
@@ -613,7 +625,9 @@ export async function restoreBackup(
           fields.map((field) =>
             (table === 'economy_rebalances' && field === 'tier_changes') ||
             (table === 'tier_adjustments' && field === 'changes') ||
-            (table === 'character_removals' && (field === 'character_ids' || field === 'refunds'))
+            (table === 'character_removals' &&
+              (field === 'character_ids' || field === 'refunds')) ||
+            (table === 'profile_pages' && field === 'showcase')
               ? JSON.stringify(row[field])
               : table === 'realms' && field === 'config'
                 ? parseRealmConfig(row[field])
@@ -734,6 +748,7 @@ export async function restoreBackup(
     await validateGemRewardBackup(tx);
     await validateAdminGemGrants(tx);
     await validateArtworkReferences(tx);
+    await validateProfilePages(tx);
     const invalidUpgrades = (
       await tx.query(`SELECT 1 FROM upgrade_purchases u
       LEFT JOIN wallet_ledger l ON l.realm_id=u.realm_id AND l.account_id=u.account_id AND l.operation_key='upgrade:'||u.request_key::text

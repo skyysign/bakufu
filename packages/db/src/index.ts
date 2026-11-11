@@ -2,6 +2,14 @@ export { createDatabase, createDiscordDatabase, transaction } from './connection
 export { setDiscordGuild } from './discord-interactions';
 export { discordInteractionSettings } from './discord-protocol';
 export { listRealmMembers } from './member-profiles';
+export { getPlayerProfile, listPlayers, playerSorts, updateProfilePage } from './profile-pages';
+export type {
+  PlayerDirectory,
+  PlayerDirectoryEntry,
+  PlayerProfile,
+  PlayerSummary,
+  ProfileCard,
+} from './profile-pages';
 export type { RealmMember, RealmMemberPage, DiscordProfile } from './member-profiles';
 export type { Database } from './connection';
 export {
@@ -82,7 +90,8 @@ export type { CatalogPreview } from './catalog';
 export type { RealmView } from './game';
 export { recycleCard, recycleCards, type BatchRecyclingResult } from './recycling';
 export { buyUpgrade } from './upgrades';
-export { setWishlistEntry } from './wishlist';
+export { addWishlistEntries, setWishlistEntry, wishlistBatchLimit } from './wishlist';
+export type { WishlistBatchResult } from './wishlist';
 export { previewRealmSettings, applyRealmSettings } from './settings';
 export { tradeCommand, tradePartnerCards } from './trades';
 export { exportPlayer, parsePlayerArchive, playerArchiveSchema } from './export';

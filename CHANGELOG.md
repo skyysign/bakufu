@@ -7,10 +7,38 @@ know which backups it can restore.
 
 ## Unreleased
 
-Newest migration: `0030_trade_proposals.sql` (realm config v12).
+Newest migration: `0032_profile_pages.sql` (realm config v13).
 
 ### Added
 
+- **Player profiles** (migration 0032): a page per player and realm with their
+  name and picture, level, owned ranks, collection statistics and a showcase of
+  up to six pinned cards (or their six most valuable). Players add a short
+  text, pick one of six page colours and can choose to show their wishlist.
+  Your profile picture at the top right opens your own page (the arrow next to
+  it opens the account menu). **Players** (on your profile page and in the
+  account menu) is a searchable directory and
+  leaderboard. On another player's page you see which of their cards you wish
+  for, can browse their collection and **Propose a trade** in one click.
+  Members of the realm only; gems are never shown. Part of player archives and
+  backups.
+- **Recycle several cards from the collection**: **Recycle several** turns the
+  Recycle buttons into Select buttons; pick cards or filter (rarity, series,
+  name) and **Select all shown**, then confirm once. Sent in retry-safe batches
+  of 50; a dropped connection is resumed with **Retry recycling** without paying
+  twice.
+- **Recycling safeguard** (Game rules → Collection → Recycling, on by default
+  and for existing realms): epic and legendary cards need a second click to
+  recycle and are left out of every bulk recycling. The server enforces it.
+  Realm config v13, migration 0031.
+- **Collector ranks fitted to the realm's rules**: recommended ranks count costs
+  in packs and make each perk a share of what it improves (pack price, opening
+  cooldown, a common card's value), so a 6-hour cooldown is cut by minutes, not
+  seconds. **Fit ranks to these rules** under Game rules → Collector ranks
+  applies them to an existing realm and keeps every level a player already
+  bought. In the new-realm wizard the ranks follow the rules as you change them.
+  The rules summary lists each track's top-level perks.
+- A browser tab icon (the spark logo) and a home-screen icon for phones.
 - **Ready-made Docker image** `ghcr.io/skyysign/bakufu` for Intel/AMD and ARM
   (for example a Raspberry Pi): CI publishes it after the checks pass (`latest`
   follows `main`, version tags get their own tag). `docker compose up -d` now
@@ -66,6 +94,20 @@ Newest migration: `0030_trade_proposals.sql` (realm config v12).
 
 ### Changed
 
+- The collection remembers the sort you chose (in this browser) instead of
+  always starting with "Recently collected".
+- The Ranks page shows cooldown cuts in minutes and hours ("1 h 12 min less
+  cooldown") instead of seconds.
+- New realms without an opening cooldown get no cooldown perks in their ranks
+  (they did nothing there); the other default rank values are unchanged.
+- New realms get ten packs by default: nine category packs (was ten) plus All
+  Characters. The automatic selection no longer picks Adventure (Grand Voyage),
+  which mostly repeats Action and Fantasy; it can still be chosen by hand or
+  added later. Existing realms keep their packs.
+- The collection sort reads "Sort: Newest first / Rarest first / …".
+- The recycling confirmation for epic and legendary cards is a compact
+  "Confirm +N" with a ✕ to cancel, in the place of the Recycle button.
+- Sellers on the market link to their profile.
 - **Self-hosting guide rewritten around Discord sign-in**
   (`docs/deployment/quickstart.md`): Docker, Discord application, start, sign
   in as admin, invite players, everyday commands, backups and troubleshooting;
@@ -106,6 +148,13 @@ Newest migration: `0030_trade_proposals.sql` (realm config v12).
 - Live pulls stop checking for new pulls after 5 minutes without input and
   resume on the next click or key press, so an open tab doesn't keep a
   sleeping database awake.
+
+### Fixed
+
+- Typing a gem amount in a trade offer no longer shows a leading 0 ("0500"):
+  the field starts empty.
+- The roster size slider's labels (100, 1,000, 10,000, …) now sit where the
+  handle is for those sizes, and the slider fill ends at the handle.
 
 ### Removed
 

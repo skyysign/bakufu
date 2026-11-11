@@ -212,3 +212,8 @@ restore with every character active. Migration 0030 adds `trades.protocol`
 (proposal trades); restores check each protocol's rules (for proposals: every
 version confirmed by its author, a side reserved only while its owner confirmed
 the current version). Snapshots taken before 0030 restore as protocol 1.
+Migration 0031 advances realm config to v13 (the recycling safeguard, on for
+existing realms); it adds no table. Snapshots taken before 0031 restore with
+the safeguard on. Migration 0032 adds `profile_pages` (each player's profile
+text, colour, showcase and wishlist switch); restores check that every page is
+well formed. Snapshots taken before 0032 restore with default pages.

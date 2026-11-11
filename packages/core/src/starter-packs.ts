@@ -5,6 +5,7 @@ import {
   catalogPackGrouping,
   defaultPackName,
   isDemographicCategory,
+  isManualOnlyCategory,
   isMediumCategory,
 } from './pack-themes';
 
@@ -71,7 +72,9 @@ export function generatePacks(characters: Character[], config: RealmConfig): Sta
   if (characters.length < config.minimumPoolSize) return [];
   const categories = categoryPools(characters);
   const demographicMode = catalogPackGrouping(characters).mode === 'demographics';
-  const bySize = [...categories].sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]));
+  const bySize = [...categories]
+    .filter(([category]) => !isManualOnlyCategory(category))
+    .sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]));
   // Anime/manga catalogs lead with their actual demographic tags, then add the
   // largest distinct genre/theme pools for variety. Genres are never relabelled
   // as demographics; each pack keeps its exact source category.

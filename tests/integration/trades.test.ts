@@ -502,7 +502,8 @@ describe('atomic two-party trading', () => {
         balance: 90,
         configRevision: 2,
         config: {
-          schemaVersion: 12,
+          schemaVersion: 13,
+          recycleSafeguard: true,
           fameFloors: disabledFameFloors,
           packPrice: 12,
           trading: defaultConfig.trading,
@@ -513,7 +514,8 @@ describe('atomic two-party trading', () => {
       });
       expect(view.config).toEqual({
         ...after,
-        schemaVersion: 12,
+        schemaVersion: 13,
+        recycleSafeguard: true,
         fameFloors: disabledFameFloors,
         legacyPurchasesRetired: false,
         rankTracks: { enabled: false, tracks: [] },

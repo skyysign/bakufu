@@ -28,11 +28,16 @@ afterAll(async () => {
   await server?.stop();
 });
 
-/** A player who opened five packs of the demo realm (five different characters). */
-async function opened() {
+/**
+ * A player who opened five packs of the demo realm (five different characters).
+ * The recycling safeguard is off unless a test turns it on: the demo cards'
+ * rarities are random.
+ */
+async function opened(recycleSafeguard = false) {
   const realm = await createRealm(db, admin, 'Batch recycling fixture', {
     ...defaultConfig,
     startingGems: 5_000,
+    recycleSafeguard,
   });
   const player = await provisionPlayer(db, realm, `batch-${++players}@example.test`, password);
   const view = await getRealmView(db, player, realm);
@@ -145,6 +150,60 @@ describe('recycling several cards from an opening', () => {
       }),
     ).rejects.toThrow();
     expect(await owned(r.realm, r.player)).toEqual([...r.cards].sort());
+  });
+
+  it('protects epic and legendary cards: one at a time, confirmed, while the safeguard is on', async () => {
+    const r = await opened(true);
+    const setTier = async (cardId: string, tier: string) =>
+      db.query(
+        'UPDATE characters c SET tier=$3 FROM cards owned WHERE owned.realm_id=$1 AND owned.id=$2 AND c.realm_id=owned.realm_id AND c.id=owned.character_id',
+        [r.realm, cardId, tier],
+      );
+    const [legendary, epic, common, rare] = r.cards;
+    await setTier(legendary, 'legendary');
+    await setTier(epic, 'epic');
+    await setTier(common, 'common');
+    await setTier(rare, 'rare');
+    const before = await balance(r.realm, r.player);
+    // A bulk recycling never takes them, and nothing of it happens.
+    await expect(
+      recycleCards(db, r.player, r.realm, {
+        cardIds: [common, rare, legendary],
+        requestKey: randomUUID(),
+        expectedRevision: r.revision,
+      }),
+    ).rejects.toMatchObject({ code: 'RECYCLE_CONFIRMATION_REQUIRED', status: 409 });
+    // Alone, they need the confirmation.
+    await expect(
+      recycleCard(db, r.player, r.realm, legendary, randomUUID(), r.revision),
+    ).rejects.toMatchObject({ code: 'RECYCLE_CONFIRMATION_REQUIRED' });
+    expect(await balance(r.realm, r.player)).toBe(before);
+    expect(await owned(r.realm, r.player)).toEqual([...r.cards].sort());
+    const bulk = await recycleCards(db, r.player, r.realm, {
+      cardIds: [common, rare],
+      requestKey: randomUUID(),
+      expectedRevision: r.revision,
+    });
+    expect(bulk.recycled.map((item) => item.tier)).toEqual(['common', 'rare']);
+    const key = randomUUID();
+    const confirmed = await recycleCard(db, r.player, r.realm, legendary, key, r.revision, true);
+    expect(confirmed).toMatchObject({ cardId: legendary, tier: 'legendary' });
+    // A retry replays the receipt.
+    expect(await recycleCard(db, r.player, r.realm, legendary, key, r.revision, true)).toEqual(
+      confirmed,
+    );
+    // Turned off, the epic goes with a bulk recycling like any other card.
+    await db.query(
+      "UPDATE realms SET config=jsonb_set(config,'{recycleSafeguard}','false') WHERE id=$1",
+      [r.realm],
+    );
+    const off = await recycleCards(db, r.player, r.realm, {
+      cardIds: [epic, r.cards[4]],
+      requestKey: randomUUID(),
+      expectedRevision: r.revision,
+    });
+    expect(off.recycled[0]).toMatchObject({ cardId: epic, tier: 'epic' });
+    expect(await owned(r.realm, r.player)).toEqual([]);
   });
 
   it('restores to a fresh database with every recycling reconciled', async () => {

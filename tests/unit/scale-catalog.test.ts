@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { generateScaleCatalog } from '../../packages/importers/src/scale';
 import { majorCatalogCategories } from '../../packages/importers/src/providers';
 import { parseCatalog } from '../../packages/importers/src/json';
-import {} from '../../packages/config/src/index';
+import { defaultConfig as currentConfig } from '../../packages/config/src/index';
 import { defaultConfig } from '../support/prototype-config';
 import { buildStarterPacks } from '../../packages/core/src/starter-packs';
 describe('original scale catalog', () => {
@@ -20,7 +20,10 @@ describe('original scale catalog', () => {
   it('produces major-category packs and a complete compatible source rarity cohort', () => {
     const parsed = parseCatalog(generateScaleCatalog()),
       packs = buildStarterPacks(parsed.characters, defaultConfig);
+    // The historical rules allowed ten category packs; new realms get nine,
+    // so ten packs with All Characters.
     expect(packs).toHaveLength(11);
+    expect(buildStarterPacks(parsed.characters, currentConfig)).toHaveLength(10);
     expect(packs.find((item) => item.category === null)?.name).toBe('All Characters');
     for (const pack of packs.filter((item) => item.category !== null))
       expect(majorCatalogCategories).toContain(pack.category);

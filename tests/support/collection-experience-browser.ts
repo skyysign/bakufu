@@ -197,9 +197,17 @@ export async function verifyCollectionExperience(
     await expect(glossary.locator('article')).toHaveCount(1);
     await expect(glossary.getByRole('heading', { name: wished.name, exact: true })).toBeVisible();
     await page.getByRole('button', { name: /^Your wishlist/ }).click();
-    await page.getByRole('button', { name: 'Browse characters', exact: true }).click();
-    const picker = page.getByRole('dialog', { name: 'Choose a wishlist character', exact: true });
+    // The browser offers as many picks as there are free slots.
+    const freeSlots = (await getRealmView(db, admin, realm)).effectiveWishlistSlots;
+    await page
+      .getByRole('button', {
+        name: `Browse characters (${freeSlots} free ${freeSlots === 1 ? 'slot' : 'slots'})`,
+        exact: true,
+      })
+      .click();
+    const picker = page.getByRole('dialog', { name: 'Choose wishlist characters', exact: true });
     await expect(picker).toBeVisible();
+    await expect(picker.getByRole('status')).toContainText(`0 / ${freeSlots} selected`);
     await picker.getByLabel('Search cards by name or series').fill(wished.name);
     await picker.getByRole('button', { name: `Select ${wished.name}`, exact: true }).click();
     await picker.getByLabel('Search cards by name or series').fill('no matching character');
@@ -208,7 +216,24 @@ export async function verifyCollectionExperience(
     await expect(
       picker.getByRole('button', { name: `Select ${wished.name}`, exact: true }),
     ).toHaveAttribute('aria-pressed', 'true');
-    await picker.getByRole('button', { name: 'Choose character', exact: true }).click();
+    // A second character in the same pick: both are added together.
+    const second = original.catalog.find(
+      (card) => card.id !== wished.id && !owned.some((entry) => entry.id === card.id),
+    )!;
+    await picker.getByLabel('Search cards by name or series').fill(second.name);
+    await picker.getByRole('button', { name: `Select ${second.name}`, exact: true }).click();
+    await picker.getByRole('button', { name: 'Add 2 to wishlist', exact: true }).click();
+    await expect
+      .poll(async () =>
+        (await getRealmView(db, admin, realm)).wishlist.map((card) => card.id).sort(),
+      )
+      .toEqual([wished.id, second.id].sort());
+    await expect(page.getByRole('status').filter({ hasText: '2 characters added' })).toBeVisible();
+    // Keep the rest of this check on one wish.
+    await page
+      .getByRole('button', { name: new RegExp(`^Remove ${second.name}`) })
+      .first()
+      .click();
     await expect
       .poll(async () => (await getRealmView(db, admin, realm)).wishlist.map((card) => card.id))
       .toEqual([wished.id]);

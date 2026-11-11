@@ -32,10 +32,13 @@ export function WishlistLibrary({
   view,
   disabled,
   onWish,
+  onAdd,
 }: {
   view: RealmView;
   disabled: boolean;
   onWish: (id: string, present: boolean) => void;
+  /** Adds the characters picked together in the browser. */
+  onAdd: (ids: string[]) => void;
 }) {
   const [tab, setTab] = useState<'wishes' | 'glossary'>('wishes'),
     [search, setSearch] = useState(''),
@@ -46,7 +49,8 @@ export function WishlistLibrary({
     [loading, setLoading] = useState(false),
     [loadError, setLoadError] = useState('');
   const wished = new Set(view.wishlist.map((character) => character.id));
-  const full = view.wishlist.length >= view.effectiveWishlistSlots;
+  const free = Math.max(0, view.effectiveWishlistSlots - view.wishlist.length);
+  const full = free === 0;
   const refreshKey = `${view.cards.length}:${view.wishlist.map((entry) => entry.id).join(',')}:${view.configRevision}`;
   useEffect(() => {
     if (tab !== 'glossary') return;
@@ -120,16 +124,23 @@ export function WishlistLibrary({
         }
         actions={
           tab === 'wishes' ? (
+            // Pick as many characters as there are free slots, then add them together.
             <CardPicker
-              title="Choose a wishlist character"
-              trigger="Browse characters"
-              single
-              maximum={1}
+              title="Choose wishlist characters"
+              trigger={
+                full
+                  ? 'Browse characters'
+                  : `Browse characters (${free} free ${free === 1 ? 'slot' : 'slots'})`
+              }
+              maximum={free}
               selected={[]}
               disabled={disabled || full}
               load={loadWishCandidates}
+              confirmManyLabel={(count) =>
+                count ? `Add ${count} to wishlist` : 'Choose characters to add'
+              }
               onChange={(ids) => {
-                if (ids[0]) onWish(ids[0], true);
+                if (ids.length) onAdd(ids);
               }}
             />
           ) : undefined
@@ -145,9 +156,6 @@ export function WishlistLibrary({
       </div>
       {tab === 'wishes' ? (
         <>
-          {full && view.effectiveWishlistSlots > 0 && (
-            <p className="inline-note">Your wishlist is full. Remove a wish to make room.</p>
-          )}
           <div className="card-browser-grid wishlist-card-grid">
             {view.wishlist.map((character) => (
               <article className={`wishlist-character ${character.tier}`} key={character.entryId}>

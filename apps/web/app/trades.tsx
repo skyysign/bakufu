@@ -115,7 +115,10 @@ function SideEditor({
                 min={0}
                 max={maxGems}
                 step={1}
-                value={side.gems}
+                inputMode="numeric"
+                // Empty instead of 0: typing into a field showing 0 gave "0500".
+                value={side.gems || ''}
+                placeholder="0"
                 disabled={disabled}
                 onChange={(event) =>
                   onChange({
@@ -148,6 +151,7 @@ function TradeComposer({
   view,
   trade,
   partnerName,
+  initialPartner,
   disabled,
   onSubmit,
   onClose,
@@ -155,11 +159,13 @@ function TradeComposer({
   view: RealmView;
   trade?: TradeView;
   partnerName?: string;
+  /** A new trade started from a player's profile. */
+  initialPartner?: string;
   disabled: boolean;
   onSubmit: (command: Command) => void;
   onClose: () => void;
 }) {
-  const [partnerCode, setPartnerCode] = useState(trade?.counterpartyCode ?? ''),
+  const [partnerCode, setPartnerCode] = useState(trade?.counterpartyCode ?? initialPartner ?? ''),
     [partner, setPartner] = useState<Partner | null>(null),
     [partnerError, setPartnerError] = useState(''),
     [mine, setMine] = useState<Side>(trade ? sideOf(trade.myOffer) : emptySide),
@@ -411,16 +417,23 @@ export function Trades({
   view,
   disabled,
   onLockChange,
+  initialPartner,
 }: {
   view: RealmView;
   disabled: boolean;
   onLockChange: (locked: boolean) => void;
+  /** Trade code from "Propose a trade" on a profile: opens a new offer to them. */
+  initialPartner?: string;
 }) {
+  const startWith =
+    initialPartner && initialPartner !== view.tradeCode && view.config.trading.enabled
+      ? initialPartner
+      : undefined;
   const router = useRouter(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
-    [composing, setComposing] = useState<'new' | string | null>(null),
+    [composing, setComposing] = useState<'new' | string | null>(startWith ? 'new' : null),
     [tab, setTab] = useState<'open' | 'history'>('open'),
     [copied, setCopied] = useState(false);
   const [pending, setPending] = useState<{
@@ -663,6 +676,7 @@ export function Trades({
       {composing === 'new' && (
         <TradeComposer
           view={view}
+          initialPartner={startWith}
           disabled={locked}
           onSubmit={send}
           onClose={() => setComposing(null)}

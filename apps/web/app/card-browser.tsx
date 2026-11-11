@@ -82,6 +82,7 @@ export function CardPicker({
   disabled,
   single = false,
   confirmLabel,
+  confirmManyLabel,
 }: {
   cards?: BrowseCard[];
   load?: CardLoader;
@@ -94,6 +95,8 @@ export function CardPicker({
   single?: boolean;
   /** Single-choice confirm button text; defaults to "Choose character". */
   confirmLabel?: string;
+  /** Multiple-choice confirm button text for a count; "Use N selected cards" by default. */
+  confirmManyLabel?: (count: number) => string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     opener = useRef<HTMLButtonElement>(null),
@@ -317,13 +320,17 @@ export function CardPicker({
           </button>
           <button
             type="button"
-            disabled={single && draft.length !== 1}
+            disabled={(single && draft.length !== 1) || (!!confirmManyLabel && !draft.length)}
             onClick={() => {
               onChange(draft);
               close();
             }}
           >
-            {single ? (confirmLabel ?? 'Choose character') : `Use ${draft.length} selected cards`}
+            {single
+              ? (confirmLabel ?? 'Choose character')
+              : confirmManyLabel
+                ? confirmManyLabel(draft.length)
+                : `Use ${draft.length} selected cards`}
           </button>
         </div>
       </dialog>

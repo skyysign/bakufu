@@ -18,6 +18,7 @@ import {
   provisionPlayer,
   recycleCard,
   setWishlistEntry,
+  addWishlistEntries,
   type Database,
 } from '../../packages/db/src/index';
 import { makeBackup, restoreBackup } from '../../packages/db/src/backup';
@@ -79,6 +80,48 @@ describe('private realm wishlists and transactional targeting', () => {
       (await db.query('SELECT last_opened_at FROM memberships WHERE realm_id=$1', [r.id])).rows[0]
         .last_opened_at,
     ).toBeNull();
+  });
+  it('adds several picked characters at once, all or nothing, and replays a retry', async () => {
+    const r = await realm(),
+      characters = r.view.catalog.slice(0, 4).map((character) => character.id),
+      requestKey = randomUUID();
+    const add = (ids: string[], key = randomUUID(), revision = r.view.configRevision) =>
+      addWishlistEntries(db, admin, r.id, {
+        characterIds: ids,
+        requestKey: key,
+        expectedRevision: revision,
+      });
+    // Three slots: four characters don't fit, and none of them is added.
+    await expect(add(characters)).rejects.toMatchObject({ code: 'WISHLIST_FULL' });
+    expect((await getRealmView(db, admin, r.id)).wishlist).toEqual([]);
+    const result = await add(characters.slice(0, 3), requestKey);
+    expect(result.added.map((item) => [item.characterId, item.changed])).toEqual(
+      characters.slice(0, 3).map((id) => [id, true]),
+    );
+    expect(result.entryCount).toBe(3);
+    expect((await getRealmView(db, admin, r.id)).wishlist.map((entry) => entry.id).sort()).toEqual(
+      characters.slice(0, 3).sort(),
+    );
+    // Each wish has its own change receipt, like a single change.
+    expect(
+      (
+        await db.query(
+          'SELECT count(*)::integer AS count FROM wishlist_changes WHERE realm_id=$1',
+          [r.id],
+        )
+      ).rows[0].count,
+    ).toBe(3);
+    expect(await add(characters.slice(0, 3), requestKey)).toEqual(result);
+    await expect(add([characters[3], characters[0]], requestKey)).rejects.toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+    await expect(
+      add([characters[3]], randomUUID(), r.view.configRevision + 1),
+    ).rejects.toMatchObject({
+      code: 'SETTINGS_CHANGED',
+    });
+    for (const invalid of [[], [characters[0], characters[0]], [randomUUID()]])
+      await expect(add(invalid)).rejects.toThrow();
   });
   it('serializes the final slot, no-ops repeated adds, and enforces character uniqueness', async () => {
     const r = await realm({ ...defaultConfig, wishlist: { slots: 1, weightMultiplier: 3 } });
