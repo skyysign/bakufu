@@ -659,6 +659,7 @@ const basisOf = (config: RealmConfig): RankTrackBasis => ({
   packPrice: config.packPrice,
   cooldownSeconds: config.cooldownSeconds,
   recycleRewards: config.recycleRewards,
+  gemClaimSeconds: config.gemRewards.enabled ? config.gemRewards.intervalSeconds : 0,
 });
 /** The pack price, cooldown and card values currently typed into the form. */
 function readBasis(form: HTMLFormElement, fallback: RankTrackBasis): RankTrackBasis {
@@ -668,9 +669,14 @@ function readBasis(form: HTMLFormElement, fallback: RankTrackBasis): RankTrackBa
     const value = Number(raw);
     return raw === null || raw === '' || !Number.isFinite(value) ? otherwise : value;
   };
+  const claimsOn = form.querySelector<HTMLInputElement>('input[name="gemRewardsEnabled"]');
   return {
     packPrice: number('packPrice', fallback.packPrice),
     cooldownSeconds: number('cooldownSeconds', fallback.cooldownSeconds),
+    gemClaimSeconds:
+      claimsOn && !claimsOn.checked
+        ? 0
+        : Math.round(number('gemRewardHours', (fallback.gemClaimSeconds ?? 0) / 3600) * 3600),
     recycleRewards: Object.fromEntries(
       tiers.map((tier) => [tier, number(`reward-${tier}`, fallback.recycleRewards[tier] ?? 0)]),
     ),
@@ -681,8 +687,10 @@ function perksText(benefits: RankTrackBenefits) {
     benefits.packDiscount && `${benefits.packDiscount.toLocaleString()} gems off packs`,
     benefits.recycleBonus && `+${benefits.recycleBonus.toLocaleString()} gems per recycling`,
     benefits.wishlistSlots && `+${benefits.wishlistSlots} wishlist slots`,
+    benefits.gemClaimReductionSeconds &&
+      `free gems ${durationText(benefits.gemClaimReductionSeconds)} sooner`,
     benefits.cooldownReductionSeconds &&
-      `${durationText(benefits.cooldownReductionSeconds)} less cooldown`,
+      `${durationText(benefits.cooldownReductionSeconds)} less opening cooldown`,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -754,7 +762,7 @@ function RankTrackGroup({
       id={`${prefix}-ranks-title`}
       category="ranks"
       title="Collector ranks"
-      description="Players spend gems on rank levels for lasting perks. Recommended ranks follow your pack price, opening cooldown and common card value: costs are counted in packs, and each perk is a share of what it improves. Owned levels are never taken away."
+      description="Players spend gems on rank levels for lasting perks. Recommended ranks follow your pack price, free gem claim interval, opening cooldown and common card value: costs are counted in packs, and each perk is a share of what it improves. Owned levels are never taken away."
       action={
         <ResetButton
           visible={!enabled || !sameJson(tracks, JSON.parse(fittedText))}
@@ -850,7 +858,7 @@ export function RulesFields({
   return (
     <>
       <EconomyGroup config={config} prefix={prefix} />
-      <GemRewardGroup value={config.gemRewards} prefix={prefix} onChanged={onChanged} />
+      <GemRewardGroup value={config.gemRewards} prefix={prefix} onChanged={changed} />
       <RarityGroup config={config} prefix={prefix} onChanged={changed} />
       <RecyclingGroup value={config.recycleSafeguard} prefix={prefix} />
       <CharacterValueGroup value={config.characterValues} prefix={prefix} />

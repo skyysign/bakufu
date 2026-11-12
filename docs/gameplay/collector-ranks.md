@@ -6,22 +6,26 @@ unlock Sapphire, Ruby and Emerald. Every track has four levels by default, and
 each successive level costs more.
 
 The recommended ranks follow each realm's own rules: costs are counted in
-packs, and each perk is a share of what it improves (pack price, opening
-cooldown, a common card's base value). With the default 200-gem pack and
-30-gem commons:
+packs, and each perk is a share of what it improves (pack price, free gem claim
+interval, opening cooldown, a common card's base value). With the default
+200-gem pack, 30-gem commons and gem claims every 6 hours:
 
 | Rank | Costs for levels I / II / III / IV (in packs) | Unlock requirements | Benefits for levels I–IV |
 | --- | --- | --- | --- |
 | Bronze | 500 / 1,500 / 3,000 / 6,000 (2.5 / 7.5 / 15 / 30) | None | 5 / 10 / 15 / 20% off the pack price |
 | Silver | 1,000 / 2,500 / 5,000 / 10,000 (5 / 12.5 / 25 / 50) | None | +1/15 to 4/15 of a common's value per recycling (2 / 4 / 6 / 8 gems) |
 | Gold | 1,500 / 3,500 / 7,500 / 15,000 (7.5 / 17.5 / 37.5 / 75) | None | +1 / 2 / 3 / 4 wishlist slots |
-| Sapphire | 5,000 / 10,000 / 20,000 / 40,000 (25 / 50 / 100 / 200) | Bronze II, Silver II, Gold II | 5 / 10 / 17.5 / 25% off packs and 5 / 10 / 15 / 20% off the cooldown |
+| Sapphire | 5,000 / 10,000 / 20,000 / 40,000 (25 / 50 / 100 / 200) | Bronze II, Silver II, Gold II | 5 / 10 / 17.5 / 25% off packs; 5 / 10 / 15 / 20% off the gem claim wait (and the opening cooldown, if any) |
 | Ruby | 7,500 / 15,000 / 30,000 / 60,000 (37.5 / 75 / 150 / 300) | Bronze IV, Silver III, Gold II | +2/15 to 10/15 of a common's value per recycling (4 / 8 / 12 / 20 gems) |
-| Emerald | 10,000 / 25,000 / 50,000 / 100,000 (50 / 125 / 250 / 500) | Bronze IV, Silver IV, Gold IV, Sapphire II, Ruby II | 5 / 10 / 15 / 20% off packs, +1 / 2 / 4 / 6 wishlist slots, 5 / 10 / 20 / 30% off the cooldown |
+| Emerald | 10,000 / 25,000 / 50,000 / 100,000 (50 / 125 / 250 / 500) | Bronze IV, Silver IV, Gold IV, Sapphire II, Ruby II | 5 / 10 / 15 / 20% off packs, +1 / 2 / 4 / 6 wishlist slots, 5 / 10 / 20 / 30% off the gem claim wait (and the opening cooldown, if any) |
 
-A realm with a 6-hour cooldown therefore gets Sapphire cuts of 18 / 36 / 54 / 72
-minutes and Emerald cuts of 18 / 36 / 72 / 108 minutes (half the wait at the
-top of both); a realm without a cooldown gets no cooldown perks. Costs round to
+With gem claims every 6 hours, free gems therefore come 18 / 36 / 54 / 72
+minutes sooner with Sapphire and 18 / 36 / 72 / 108 minutes sooner with Emerald
+(half the wait, 3 hours, at the top of both); the claim interval never drops
+below a minute. The opening cooldown (none by default) is cut by the same
+shares; a realm without one, or with gem claims off, gets no cut there. A claim
+records the member's shortened interval, so its receipt, the player archive and
+restore checks use it. Costs round to
 readable figures and stop at 1,000,000 gems (packs above 2,000 gems don't raise
 them further); free packs count costs as if a pack cost 200 gems.
 

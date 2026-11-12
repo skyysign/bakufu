@@ -20,8 +20,11 @@ function benefitsText(benefits: RankTracksView['benefits']) {
     benefits.packDiscount ? `${benefits.packDiscount} gems off every pack` : null,
     benefits.recycleBonus ? `+${benefits.recycleBonus} recycling gems` : null,
     benefits.wishlistSlots ? `+${benefits.wishlistSlots} wishlist slots` : null,
+    benefits.gemClaimReductionSeconds
+      ? `free gems ${durationText(benefits.gemClaimReductionSeconds)} sooner`
+      : null,
     benefits.cooldownReductionSeconds
-      ? `${durationText(benefits.cooldownReductionSeconds)} less cooldown`
+      ? `${durationText(benefits.cooldownReductionSeconds)} less opening cooldown`
       : null,
   ].filter(Boolean);
 }

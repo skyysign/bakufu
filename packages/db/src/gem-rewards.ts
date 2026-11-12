@@ -10,6 +10,8 @@ import { GameError } from '../../core/src/errors';
 import { transaction, type Database, type Transaction } from './connection';
 import { requireMember } from './game';
 import { requireExpectedRevision } from './settings-revision';
+import { effectiveMemberConfig } from './rank-track-state';
+import { purchasedCollectorRank } from './rank-state';
 
 async function lastClaim(
   tx: Transaction,
@@ -61,7 +63,16 @@ export async function claimGems(
     ).rows[0];
     if (previous) return previous.result as GemRewardResult;
     await requireExpectedRevision(tx, realm, expectedRevision);
-    const config = parseRealmConfig(row.config),
+    // The member's own rules: rank perks can shorten the claim interval. They
+    // are saved with the claim, so its receipt and restore checks use them too.
+    const base = parseRealmConfig(row.config);
+    const config = await effectiveMemberConfig(
+        tx,
+        realm,
+        actor,
+        base,
+        row.config.schemaVersion >= 7 ? await purchasedCollectorRank(tx, realm, actor) : 0,
+      ),
       now = (await tx.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
     const quote = calculateGemReward(
       config,

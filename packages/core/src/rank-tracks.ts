@@ -9,7 +9,13 @@ export const emptyTrackBenefits: RankTrackBenefits = {
   cooldownReductionSeconds: 0,
 };
 export function rankTrackBenefits(config: RealmConfig, levels: RankTrackLevels): RankTrackBenefits {
-  const result = { ...emptyTrackBenefits };
+  // Gem claim cuts appear only in rules that define them, so receipts written
+  // before that perk keep exactly the benefits they recorded.
+  const result: RankTrackBenefits = (config.rankTracks?.tracks ?? []).some((track) =>
+    track.levels.some((level) => level.benefits.gemClaimReductionSeconds !== undefined),
+  )
+    ? { ...emptyTrackBenefits, gemClaimReductionSeconds: 0 }
+    : { ...emptyTrackBenefits };
   for (const [id, level] of Object.entries(levels)) {
     const track = config.rankTracks?.tracks.find((entry) => entry.id === id);
     if (
@@ -27,7 +33,7 @@ export function rankTrackBenefits(config: RealmConfig, levels: RankTrackLevels):
     if (level === 0) continue;
     const benefits = track.levels[level - 1].benefits;
     for (const key of Object.keys(result) as (keyof RankTrackBenefits)[])
-      result[key] += benefits[key];
+      result[key] = (result[key] ?? 0) + (benefits[key] ?? 0);
   }
   return result;
 }
@@ -79,6 +85,14 @@ export function applyRankTrackBenefits(config: RealmConfig, levels: RankTrackLev
       slots: Math.min(20, config.wishlist.slots + benefits.wishlistSlots),
     },
     cooldownSeconds: Math.max(0, config.cooldownSeconds - benefits.cooldownReductionSeconds),
+    // Free gem claims come sooner, but never more often than once a minute.
+    gemRewards: {
+      ...config.gemRewards,
+      intervalSeconds: Math.max(
+        60,
+        config.gemRewards.intervalSeconds - (benefits.gemClaimReductionSeconds ?? 0),
+      ),
+    },
   };
 }
 export type RankTracksView = ReturnType<typeof rankTracksView>;

@@ -639,7 +639,7 @@ export async function getRealmView(
             : null,
         gemReward:
           realm.config.schemaVersion >= 8
-            ? await gemRewardState(tx, realmId, actorId, config)
+            ? await gemRewardState(tx, realmId, actorId, effectiveConfig)
             : gemRewardView(config, null, Date.now()),
         effectiveWishlistSlots: effectiveConfig.wishlist.slots,
         effectiveRecycleRewards: effectiveConfig.recycleRewards,

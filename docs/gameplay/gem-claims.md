@@ -13,6 +13,9 @@ does not automatically refill the wallet.
 Claims are manual. Waiting twelve hours with a six-hour interval still makes
 one claim available; missed claims do not accumulate. Claiming awards no XP,
 cards or rank progress. Wallets and claim timing remain independent in each realm.
+The Sapphire and Emerald [collector ranks](collector-ranks.md) shorten a player's
+claim interval (by up to half of it together); the countdown and each claim use
+the player's own interval, which the claim receipt records.
 The current web API supports claims; a Discord claim command is future work.
 
 ## Configure a realm

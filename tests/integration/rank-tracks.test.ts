@@ -12,6 +12,7 @@ import {
   openPack,
   buyUpgrade,
   provisionPlayer,
+  claimGems,
   type Database,
 } from '../../packages/db/src/index';
 import { makeBackup, restoreBackup, assertBackupRestored } from '../../packages/db/src/backup';
@@ -87,6 +88,24 @@ describe('transactional rank progression and recovery', () => {
     expect(view.rankTracks.levels).toEqual({ bronze: 2, gold: 2, sapphire: 1, silver: 2 });
     expect(view.packPrice).toBe(170);
     expect(view.effectiveWishlistSlots).toBe(5);
+    // Sapphire I: free gems 18 minutes sooner than the 6-hour interval.
+    expect(view.gemReward.intervalSeconds).toBe(6 * 3600 - 18 * 60);
+    const claim = await claimGems(db, admin, id, randomUUID());
+    expect(Date.parse(claim.nextClaimAt) - Date.parse(claim.claimedAt)).toBe(
+      (6 * 3600 - 18 * 60) * 1000,
+    );
+    // The claim keeps the shortened rules: archives and restores accept it.
+    const archive = await exportPlayer(db, admin, id);
+    expect(parsePlayerArchive(archive)).toEqual(archive);
+    expect(archive.gemRewardClaims.at(-1)?.rules.intervalSeconds).toBe(6 * 3600 - 18 * 60);
+    const claimBackup = await makeBackup(db, 'gem-claim-backup-passphrase');
+    const claimRestore = (await server.database('rank_tracks_gem_claims')).db;
+    try {
+      await restoreBackup(claimRestore, claimBackup, 'gem-claim-backup-passphrase');
+      await assertBackupRestored(claimRestore, claimBackup, 'gem-claim-backup-passphrase');
+    } finally {
+      await claimRestore.end();
+    }
     const pack = view.packs.find((item) => item.name === 'All Characters')!;
     expect(await openPack(db, admin, id, pack.id, randomUUID())).toMatchObject({
       ok: true,

@@ -31,10 +31,14 @@ Newest migration: `0032_profile_pages.sql` (realm config v13).
   and for existing realms): epic and legendary cards need a second click to
   recycle and are left out of every bulk recycling. The server enforces it.
   Realm config v13, migration 0031.
+- **Free gems sooner with ranks**: Sapphire and Emerald shorten the free gem
+  claim wait (with gem claims every 6 hours: Sapphire 18 / 36 / 54 / 72 minutes,
+  Emerald 18 / 36 / 72 / 108 minutes; half the wait at the top of both). The
+  countdown, the claim and its receipt use each player's own interval.
 - **Collector ranks fitted to the realm's rules**: recommended ranks count costs
-  in packs and make each perk a share of what it improves (pack price, opening
-  cooldown, a common card's value), so a 6-hour cooldown is cut by minutes, not
-  seconds. **Fit ranks to these rules** under Game rules → Collector ranks
+  in packs and make each perk a share of what it improves (pack price, gem claim
+  interval, opening cooldown, a common card's value), so a 6-hour wait is cut by
+  minutes, not seconds. **Fit ranks to these rules** under Game rules → Collector ranks
   applies them to an existing realm and keeps every level a player already
   bought. In the new-realm wizard the ranks follow the rules as you change them.
   The rules summary lists each track's top-level perks.
@@ -98,8 +102,9 @@ Newest migration: `0032_profile_pages.sql` (realm config v13).
   always starting with "Recently collected".
 - The Ranks page shows cooldown cuts in minutes and hours ("1 h 12 min less
   cooldown") instead of seconds.
-- New realms without an opening cooldown get no cooldown perks in their ranks
-  (they did nothing there); the other default rank values are unchanged.
+- The ranks' opening-cooldown cut is now labelled "less opening cooldown"; new
+  realms without an opening cooldown get no opening-cooldown cut (it did
+  nothing there). The other default rank values are unchanged.
 - New realms get ten packs by default: nine category packs (was ten) plus All
   Characters. The automatic selection no longer picks Adventure (Grand Voyage),
   which mostly repeats Action and Fantasy; it can still be chosen by hand or

@@ -1,11 +1,26 @@
 import { z } from 'zod';
+import { defaultGemRewards } from './gem-rewards';
 
 export const rankTrackBenefitsSchema = z.strictObject({
   packDiscount: z.number().int().min(0).max(1_000_000),
   recycleBonus: z.number().int().min(0).max(1_000_000),
   wishlistSlots: z.number().int().min(0).max(20),
+  /** Off the opening cooldown (the wait between pack openings). */
   cooldownReductionSeconds: z.number().int().min(0).max(604800),
+  /**
+   * Off the free gem claim interval. Optional: rank rules and purchase
+   * receipts from before this perk have no such field (it counts as 0).
+   */
+  gemClaimReductionSeconds: z.number().int().min(0).max(2_678_400).optional(),
 });
+/** Every benefit key a level may carry, including optional ones. */
+export const rankTrackBenefitKeys = [
+  'packDiscount',
+  'recycleBonus',
+  'wishlistSlots',
+  'cooldownReductionSeconds',
+  'gemClaimReductionSeconds',
+] as const;
 export const rankTrackRuleSchema = z.strictObject({
   id: z.string().regex(/^[a-z][a-z0-9_-]{0,39}$/),
   name: z
@@ -54,8 +69,8 @@ export const rankTracksSchema = z
         if (previous && level.cost <= previous.cost) issue('Each subsequent level must cost more.');
         if (
           previous &&
-          (Object.keys(level.benefits) as (keyof typeof level.benefits)[]).some(
-            (key) => level.benefits[key] < previous.benefits[key],
+          rankTrackBenefitKeys.some(
+            (key) => (level.benefits[key] ?? 0) < (previous.benefits[key] ?? 0),
           )
         )
           issue('Track benefits must not decrease.');
@@ -86,10 +101,13 @@ export type RankTrackBasis = {
   packPrice: number;
   cooldownSeconds: number;
   recycleRewards: Record<string, number>;
+  /** The free gem claim interval; 0 (or absent) while gem claims are off. */
+  gemClaimSeconds?: number;
 };
 // The six recommended ranks, as shares of the realm's own rules: costs in
 // packs, pack discounts as a share of the price, recycling bonuses as a share
-// of a common card's base value and cooldown cuts as a share of the cooldown.
+// of a common card's base value, and waits (free gem claims, the opening
+// cooldown) cut by a share of their length.
 // At a 200-gem pack and 30-gem commons this gives the original numbers.
 const rankDesign: {
   id: string;
@@ -99,6 +117,7 @@ const rankDesign: {
   discount?: number[];
   recycle?: number[];
   wishlist?: number[];
+  /** Shares of the waits: the gem claim interval and the opening cooldown. */
   cooldown?: number[];
 }[] = [
   {
@@ -189,6 +208,7 @@ export function recommendedRankTracks(basis: RankTrackBasis): RankTracksConfig {
   // Costs are counted in packs; free packs fall back to a 200-gem reference.
   const costUnit = price > 0 ? Math.min(price, 2_000) : 200;
   const cooldown = Math.min(604_800, Math.max(0, Math.floor(basis.cooldownSeconds) || 0));
+  const gemClaim = Math.min(2_678_400, Math.max(0, Math.floor(basis.gemClaimSeconds ?? 0) || 0));
   const values = Object.values(basis.recycleRewards).filter((value) => value > 0);
   const commonValue =
     (basis.recycleRewards.common ?? 0) > 0
@@ -216,6 +236,10 @@ export function recommendedRankTracks(basis: RankTrackBasis): RankTracksConfig {
               cooldownReductionSeconds: track.cooldown
                 ? roundSeconds(cooldown * track.cooldown[index])
                 : 0,
+              // Tracks that shorten waits also shorten free gem claims.
+              ...(track.cooldown
+                ? { gemClaimReductionSeconds: roundSeconds(gemClaim * track.cooldown[index]) }
+                : {}),
             },
           };
         }),
@@ -251,10 +275,9 @@ export function fitRankTracks(
       levels.push({
         cost: Math.min(1_000_000, Math.max(level.cost, previous.cost + 1)),
         benefits: Object.fromEntries(
-          (Object.keys(level.benefits) as (keyof RankTrackBenefits)[]).map((key) => [
-            key,
-            Math.max(level.benefits[key], previous.benefits[key]),
-          ]),
+          rankTrackBenefitKeys
+            .filter((key) => key in level.benefits || key in previous.benefits)
+            .map((key) => [key, Math.max(level.benefits[key] ?? 0, previous.benefits[key] ?? 0)]),
         ) as RankTrackBenefits,
       });
     }
@@ -293,5 +316,6 @@ export function fitRankTracks(
 export const defaultRankTracks: RankTracksConfig = recommendedRankTracks({
   packPrice: 200,
   cooldownSeconds: 0,
+  gemClaimSeconds: defaultGemRewards.intervalSeconds,
   recycleRewards: { common: 30 },
 });

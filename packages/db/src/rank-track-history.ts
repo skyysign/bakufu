@@ -12,6 +12,7 @@ const benefitsSchema = z.strictObject({
   recycleBonus: z.number().int().nonnegative(),
   wishlistSlots: z.number().int().nonnegative(),
   cooldownReductionSeconds: z.number().int().nonnegative(),
+  gemClaimReductionSeconds: z.number().int().nonnegative().optional(),
 });
 export const rankTrackReceiptSchema = z.strictObject({
   ok: z.literal(true),

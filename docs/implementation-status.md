@@ -92,10 +92,11 @@ not an automatic wallet refill. Disabled realms display that state explicitly.
 **Collector ranks** are separate from XP: improve Bronze, Silver and Gold
 independently through four increasingly expensive levels, then unlock Sapphire,
 Ruby and Emerald by meeting their mixed level prerequisites. Benefits include
-pack discounts, recycling bonuses, wishlist slots and cooldown reduction. The
-recommended ranks are measured against each realm's rules (costs in packs, perks
-as shares of the pack price, cooldown and common card value), so a 6-hour
-cooldown is cut by minutes, not seconds. New realms enable these tracks, fitted
+pack discounts, recycling bonuses, wishlist slots, sooner free gem claims and
+opening cooldown reduction. The recommended ranks are measured against each
+realm's rules (costs in packs, perks as shares of the pack price, gem claim
+interval, opening cooldown and common card value), so the 6-hour gem claim wait
+is cut by minutes, not seconds. New realms enable these tracks, fitted
 to their rules; existing realms use **Game rules → Collector ranks → Fit ranks
 to these rules**, which keeps every level a player already owns. Old
 purchases/benefits remain intact; covered by `tests/unit/rank-fit.test.ts` and
