@@ -34,7 +34,8 @@ exactly one owner. Bakufu is self-hosted, so your community owns its data.
 - **Discord sign-in** as the main login, plus optional `/bakufu` slash commands.
 - **Administration**: game rules with reviewed previews, packs, characters,
   rarity (fame floors and manual tiers), reveal sounds per rarity or character,
-  joining and invites, and repair tools for player collections.
+  joining and invites, more than one admin per realm, and repair tools for
+  player collections.
 - **Your data stays yours**: encrypted backups with automatic restore checks,
   and player exports.
 
@@ -106,6 +107,7 @@ Back up before every update: [backups](docs/deployment/backups.md),
   [player profiles](docs/gameplay/profiles.md),
   [joining a realm](docs/gameplay/admission.md),
   [game rules](docs/gameplay/settings.md),
+  [realm admins](docs/gameplay/realm-admins.md),
   [player collections](docs/gameplay/admin-collections.md)
 - **Content:** [providers](docs/content/providers.md),
   [catalog format](docs/content/catalog.md),

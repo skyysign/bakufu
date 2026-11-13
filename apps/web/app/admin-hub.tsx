@@ -15,6 +15,7 @@ import { DiscordGuild } from './discord-guild';
 import { AdmissionSettings } from './admission-settings';
 import { AdminCollections } from './admin-collections';
 import { RarityAdmin } from './tier-adjustments';
+import { RealmAdmins } from './realm-admins';
 
 export type AdminSection =
   | 'overview'
@@ -57,7 +58,7 @@ const sectionInfo: Record<AdminSection, { label: string; icon: IconName; hint: s
   access: {
     label: 'Players & access',
     icon: 'user',
-    hint: 'Discord, joining, invites',
+    hint: 'Discord, joining, invites, admins',
   },
   create: { label: 'New realm', icon: 'plus', hint: 'Start another game' },
 };
@@ -238,6 +239,7 @@ export function AdminHub({
     collections: false,
     rarity: false,
     invite: false,
+    admins: false,
   });
   const setLock = useCallback(
     (key: keyof typeof locks) => (value: boolean) =>
@@ -251,7 +253,8 @@ export function AdminHub({
     [soundsLock] = useState(() => setLock('sounds')),
     [collectionsLock] = useState(() => setLock('collections')),
     [rarityLock] = useState(() => setLock('rarity')),
-    [inviteLock] = useState(() => setLock('invite'));
+    [inviteLock] = useState(() => setLock('invite')),
+    [adminsLock] = useState(() => setLock('admins'));
   const busy =
     locks.create ||
     locks.settings ||
@@ -260,7 +263,8 @@ export function AdminHub({
     locks.sounds ||
     locks.collections ||
     locks.rarity ||
-    locks.invite;
+    locks.invite ||
+    locks.admins;
   useEffect(() => onLockChange(busy), [busy, onLockChange]);
   useEffect(() => () => onLockChange(false), [onLockChange]);
 
@@ -509,6 +513,7 @@ export function AdminHub({
             <div className="admin-access">
               <p className="section-intro">
                 Three steps: connect your Discord server, decide who may join, then invite people.
+                Below them, choose who else can run this realm.
               </p>
               <ol className="access-steps">
                 <li>
@@ -549,6 +554,12 @@ export function AdminHub({
                   )}
                 </li>
               </ol>
+              <RealmAdmins
+                key={`admins:${view.id}`}
+                realmId={view.id}
+                disabled={locked && !locks.admins}
+                onLockChange={adminsLock}
+              />
             </div>
           )}
           {section === 'create' && canCreate && <CreateRealmWizard onLockChange={createLock} />}

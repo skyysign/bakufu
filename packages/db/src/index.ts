@@ -2,6 +2,8 @@ export { createDatabase, createDiscordDatabase, transaction } from './connection
 export { setDiscordGuild } from './discord-interactions';
 export { discordInteractionSettings } from './discord-protocol';
 export { listRealmMembers } from './member-profiles';
+export { listRealmAdmins, setRealmMemberRole } from './realm-admins';
+export type { RealmAdmin, RealmAdminList, RealmRoleChange } from './realm-admins';
 export { getPlayerProfile, listPlayers, playerSorts, updateProfilePage } from './profile-pages';
 export type {
   PlayerDirectory,

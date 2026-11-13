@@ -5,7 +5,8 @@ under the Economy, Collection, Progression, Collector ranks or Trading tabs,
 and choose **Preview settings changes**. Review the current/proposed
 values, player impacts, warnings, and pack availability, then choose **Apply
 reviewed settings**. **Discard preview** changes no rules; **Close settings**
-leaves the live realm as it was. Ordinary players cannot preview or apply.
+leaves the live realm as it was. Ordinary players cannot preview or apply; an
+admin can make other members admins under [Realm admins](realm-admins.md).
 
 ## Editable rules and protections
 

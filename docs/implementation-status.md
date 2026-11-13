@@ -38,7 +38,8 @@ account settings have separate pages at `/admin` and `/account`, reached from th
 account menu. Admins can turn off **Admin view** in that menu to preview the player
 navigation using their current inventory. **Administration** is a hub: an **Overview**
 with a setup checklist (packs, game rules, Discord server, joining, invitations),
-**Game rules**, **Packs**, **Players & access** and, for instance admins,
+**Game rules**, **Packs**, **Players & access** (with [**Realm admins**](gameplay/realm-admins.md):
+add or remove a realm's other admins; its creator always stays one) and, for instance admins,
 **Characters** (look up a series and add the characters a realm is missing) and a
 guided **New realm** wizard (name → characters → packs → rules → review) that shows
 the generated packs and odds before anything is created. Every rule is one row

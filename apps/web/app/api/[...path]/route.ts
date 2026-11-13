@@ -47,6 +47,8 @@ import {
   tradeCommand,
   setDiscordGuild,
   listRealmMembers,
+  listRealmAdmins,
+  setRealmMemberRole,
   getPlayerProfile,
   listPlayers,
   updateProfilePage,
@@ -333,6 +335,14 @@ export async function POST(request: Request, context: Context) {
           String(input.realmId ?? ''),
           input.guildId === null ? null : String(input.guildId ?? ''),
         ),
+      );
+    if (path === 'realm-admins')
+      return NextResponse.json(
+        await setRealmMemberRole(db(), actor.id, String(input.realmId ?? ''), {
+          tradeCode: input.tradeCode,
+          role: input.role,
+        }),
+        { headers: { 'Cache-Control': 'private, no-store' } },
       );
     if (path === 'discord/invite') {
       await inviteDiscordPlayer(
@@ -654,6 +664,17 @@ export async function GET(request: Request, context: Context) {
           ...(query.has('sort') ? { sort: query.get('sort') } : {}),
           ...(query.has('offset') ? { offset: Number(query.get('offset')) } : {}),
         }),
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+    if (path === 'realm-admins') {
+      const actor = await requireAccount();
+      return NextResponse.json(
+        await listRealmAdmins(
+          db(),
+          actor.id,
+          new URL(request.url).searchParams.get('realmId') ?? '',
+        ),
         { headers: { 'Cache-Control': 'private, no-store' } },
       );
     }

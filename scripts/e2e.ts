@@ -39,6 +39,7 @@ import { verifyBatchPlay } from '../tests/support/batch-browser';
 import { verifyJikanBrowser } from '../tests/support/jikan-browser';
 import { verifyRevealSoundsAdmin } from '../tests/support/reveal-sounds-browser';
 import { verifyAdminCollections } from '../tests/support/admin-collections-browser';
+import { verifyRealmAdmins } from '../tests/support/realm-admins-browser';
 import { verifyRarityAdmin } from '../tests/support/rarity-browser';
 import { verifyRosterTools } from '../tests/support/roster-tools-browser';
 import { verifyPlayerRework } from '../tests/support/rework-browser';
@@ -1270,6 +1271,7 @@ try {
   await verifyJikanBrowser(browser, db, origin, 'browser-admin@example.test', password);
   await verifyRevealSoundsAdmin(browser, db, origin, 'browser-admin@example.test', password);
   await verifyAdminCollections(browser, db, origin, admin, 'browser-admin@example.test', password);
+  await verifyRealmAdmins(browser, db, origin, admin, 'browser-admin@example.test', password);
   await verifyRarityAdmin(browser, db, origin, admin, 'browser-admin@example.test', password);
   await verifyRosterTools(browser, db, origin, admin, 'browser-admin@example.test', password);
   await verifyCollectionExperience(
@@ -1283,7 +1285,7 @@ try {
   expect(pageErrors).toEqual([]);
   await context.close();
   console.log(
-    'Browser checks passed: physical cards/inspection, consecutive cooldown-free 1/5/10 openings, popularity/demand values, 1000-character glossary, visual trade/wishlist pickers, single-click collector ranks/recycling and replay, fame floors/manual tiers, opening recycling/roster growth/character removal, five-tier motion/sound, Discord avatars/fallback, route scroll recovery, atomic pack loading/reveals, XP/gem timers, market/trading/retry receipts, player archive v12, player profiles/directory, bulk recycling, account/Discord/provider/catalog flows, RBAC/CSRF and desktop/mobile accessibility.',
+    'Browser checks passed: physical cards/inspection, consecutive cooldown-free 1/5/10 openings, popularity/demand values, 1000-character glossary, visual trade/wishlist pickers, single-click collector ranks/recycling and replay, fame floors/manual tiers, opening recycling/roster growth/character removal, five-tier motion/sound, Discord avatars/fallback, route scroll recovery, atomic pack loading/reveals, XP/gem timers, market/trading/retry receipts, player archive v12, player profiles/directory, bulk recycling, adding and removing realm admins, account/Discord/provider/catalog flows, RBAC/CSRF and desktop/mobile accessibility.',
   );
 } finally {
   await browser?.close();

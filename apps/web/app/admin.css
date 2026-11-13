@@ -243,6 +243,67 @@
   background: var(--success-soft);
   color: var(--success);
 }
+/* Realm admins: who else can run the realm. */
+.realm-admins {
+  margin: 0;
+}
+.realm-admins > p {
+  color: var(--text-2);
+}
+.realm-admin-list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.realm-admin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-raised);
+}
+.realm-admin-name {
+  display: flex;
+  flex: 1 1 200px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.realm-admin-name .member-code {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+.realm-admin-confirm {
+  display: grid;
+  flex-basis: 100%;
+  gap: 10px;
+}
+.realm-admin-confirm > p {
+  margin: 0;
+  color: var(--text-2);
+}
+.realm-admin-confirm > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.realm-admin-add {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.realm-admin-add > h3 {
+  margin: 0 0 10px;
+}
+.realm-admin-add > button {
+  margin-top: 12px;
+}
 .help-disclosure {
   margin: 14px 0 0;
   padding: 2px 14px;

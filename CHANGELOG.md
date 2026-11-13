@@ -11,6 +11,11 @@ Newest migration: `0032_profile_pages.sql` (realm config v13).
 
 ### Added
 
+- **More than one admin per realm**: Administration → Players & access →
+  **Realm admins** lists a realm's admins; any admin can make another member an
+  admin (search by name or trade ID) or remove one again, and can step down. The
+  realm's creator always stays an admin. The server checks every change; no
+  migration (roles are already part of memberships and backups).
 - **Player profiles** (migration 0032): a page per player and realm with their
   name and picture, level, owned ranks, collection statistics and a showcase of
   up to six pinned cards (or their six most valuable). Players add a short
