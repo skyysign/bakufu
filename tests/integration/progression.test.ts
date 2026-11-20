@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  defaultProgression,
   disabledCollectorRanks,
   disabledGemRewards,
   type RealmConfig,
@@ -289,7 +290,13 @@ describe('transactional XP and first-collection protection', () => {
       expect(await getRealmView(source, actor, old.realmId)).toMatchObject({
         balance: 82,
         progression: { totalXp: 17 },
-        config: { ...defaultConfig, ranks: disabledCollectorRanks, gemRewards: disabledGemRewards },
+        config: {
+          ...defaultConfig,
+          ranks: disabledCollectorRanks,
+          gemRewards: disabledGemRewards,
+          // The original five levels become the 100-level curve (migration 0033).
+          progression: defaultProgression,
+        },
       });
       expect(
         (await source.query('SELECT reason,amount FROM xp_ledger ORDER BY reason')).rows,

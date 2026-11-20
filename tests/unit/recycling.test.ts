@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultProgression,
   parseRealmConfig,
   disabledCollectorRanks,
   disabledGemRewards,
@@ -14,7 +15,7 @@ describe('versioned recycling rules', () => {
     const upgraded = parseRealmConfig(legacyConfig);
     expect(upgraded).toEqual({
       ...legacyConfig,
-      schemaVersion: 13,
+      schemaVersion: 14,
       recycleSafeguard: true,
       fameFloors: disabledFameFloors,
       legacyPurchasesRetired: false,
@@ -24,7 +25,8 @@ describe('versioned recycling rules', () => {
       ranks: disabledCollectorRanks,
       gemRewards: disabledGemRewards,
       recycleRewards: { common: 2, uncommon: 4, rare: 6, epic: 0, legendary: 0 },
-      progression: defaultConfig.progression,
+      // v1 had the original five levels, which config v14 extends.
+      progression: defaultProgression,
       upgrades: defaultConfig.upgrades,
       wishlist: defaultConfig.wishlist,
       trading: defaultConfig.trading,

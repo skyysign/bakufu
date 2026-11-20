@@ -587,7 +587,7 @@ function ProgressionGroup({ value, prefix }: { value: RealmConfig['progression']
       <SettingRow
         id={`${prefix}-levelThresholds`}
         label="Level thresholds"
-        help="Total XP needed for each level, separated by commas, starting at 0. Changing them changes displayed levels only; XP stays intact."
+        help="Total XP needed for each level, separated by commas, starting at 0 (up to 100 levels; the default has 100). Changing them changes displayed levels only; XP stays intact."
         wide
       >
         <input
@@ -682,14 +682,16 @@ function readBasis(form: HTMLFormElement, fallback: RankTrackBasis): RankTrackBa
     ),
   };
 }
-function perksText(benefits: RankTrackBenefits) {
+/** Perk texts; an opening-cooldown cut is left out while the rules have no opening cooldown. */
+function perksText(benefits: RankTrackBenefits, openingCooldown: boolean) {
   return [
     benefits.packDiscount && `${benefits.packDiscount.toLocaleString()} gems off packs`,
     benefits.recycleBonus && `+${benefits.recycleBonus.toLocaleString()} gems per recycling`,
     benefits.wishlistSlots && `+${benefits.wishlistSlots} wishlist slots`,
     benefits.gemClaimReductionSeconds &&
       `free gems ${durationText(benefits.gemClaimReductionSeconds)} sooner`,
-    benefits.cooldownReductionSeconds &&
+    benefits.cooldownReductionSeconds > 0 &&
+      openingCooldown &&
       `${durationText(benefits.cooldownReductionSeconds)} less opening cooldown`,
   ]
     .filter(Boolean)
@@ -751,12 +753,15 @@ function RankTrackGroup({
         levels: track.levels.length,
         from: Math.min(...track.levels.map((level) => level.cost)),
         to: Math.max(...track.levels.map((level) => level.cost)),
-        perks: perksText(track.levels[track.levels.length - 1].benefits),
+        perks: perksText(
+          track.levels[track.levels.length - 1].benefits,
+          basis.cooldownSeconds > 0,
+        ),
       }));
     } catch {
       return null;
     }
-  }, [tracks]);
+  }, [tracks, basis.cooldownSeconds]);
   return (
     <SettingsGroup
       id={`${prefix}-ranks-title`}

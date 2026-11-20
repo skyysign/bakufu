@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  defaultProgression,
   disabledCollectorRanks,
   disabledGemRewards,
   parseRealmConfig,
@@ -388,7 +389,13 @@ describe('reviewed live realm settings', () => {
       expect((await target.query(sql)).rows).toEqual(expected);
       expect(await getRealmView(target, actor, old.realmId)).toMatchObject({
         configRevision: 1,
-        config: { ...defaultConfig, ranks: disabledCollectorRanks, gemRewards: disabledGemRewards },
+        config: {
+          ...defaultConfig,
+          ranks: disabledCollectorRanks,
+          gemRewards: disabledGemRewards,
+          // The original five levels become the 100-level curve (migration 0033).
+          progression: defaultProgression,
+        },
         balance: 90,
       });
       expect((await target.query('SELECT 1 FROM realm_config_changes')).rowCount).toBe(0);

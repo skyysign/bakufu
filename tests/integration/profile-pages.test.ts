@@ -319,7 +319,7 @@ describe('player profile pages', () => {
     try {
       await restoreBackup(old, backup, passphrase);
       await old.query(
-        "DROP TABLE profile_pages; DELETE FROM schema_migrations WHERE name='0032_profile_pages.sql'",
+        "DROP TABLE profile_pages; DELETE FROM schema_migrations WHERE name IN ('0032_profile_pages.sql','0033_level_curve.sql')",
       );
       const before = await makeBackup(old, passphrase);
       await restoreBackup(target, before, passphrase);

@@ -6,16 +6,23 @@ A successful pack receipt shows its XP
 award and announces a level increase. Each realm has separate player progress.
 
 By default, a player earns **10 XP** the first time they collect a particular
-character through a successful pack opening in that realm. Level thresholds
-are cumulative:
+character through a successful pack opening in that realm. There are **100
+levels**; thresholds are cumulative, and the step to the next level grows by
+10 XP every two levels (20, 20, 30, 30, 40, …):
 
-| Level | Total XP required |
-| --- | --- |
-| 1 | 0 |
-| 2 | 20 |
-| 3 | 40 |
-| 4 | 70 |
-| 5 | 100 |
+| Level | Total XP required | New characters (at 10 XP) |
+| ----- | ----------------- | ------------------------- |
+| 1     | 0                 | 0                         |
+| 2     | 20                | 2                         |
+| 3     | 40                | 4                         |
+| 4     | 70                | 7                         |
+| 5     | 100               | 10                        |
+| 10    | 340               | 34                        |
+| 20    | 1,190             | 119                       |
+| 30    | 2,540             | 254                       |
+| 50    | 6,740             | 674                       |
+| 75    | 14,800            | 1,480                     |
+| 100   | 25,990            | 2,599                     |
 
 Recycling gives gems but no XP. Reclaiming a previously collected character
 gives no XP, even after recycling it or after another player has owned it.
@@ -23,10 +30,21 @@ Another player can earn their own first-collection XP for the same character.
 The first-collection record remains when its original card is recycled.
 Multi-card packs award XP for each character new to that player.
 
-The prototype defaults cap levels at **5 / 100 XP**. XP continues accumulating
-at the highest configured level; a cap is displayed explicitly. Extend the level
-threshold list through **Administration → Game rules → Progression** for a
-longer curve without resetting XP. The separate XP-gated discount shop is retired;
+XP continues accumulating at the highest configured level; the cap is
+displayed explicitly. Change the threshold list (up to 100 levels) through
+**Administration → Game rules → Progression** without resetting XP.
+
+### Realms from before the 100 levels
+
+Until realm config v14 the default was five levels, capped at 100 XP. Players
+at that cap kept earning XP, so migration `0033_level_curve.sql` gives every
+realm still on those five levels (0, 20, 40, 70, 100) the 100-level curve, and
+each player gets the level their XP is already worth: with 500 XP, level 12
+instead of 5. The first five levels are the same, so nobody goes down, and XP,
+cards, gems and the settings revision don't change. The next opening announces
+only the levels it actually gains. Realms whose admin set their own levels keep
+them; an admin can still choose any curve in Game rules. Backups taken before
+the update restore with the new curve. The separate XP-gated discount shop is retired;
 its older purchased benefits remain active. [Collector rank tracks](collector-ranks.md)
 now provide the gem-purchased upgrade path. There is no automatic gem reward or
 cooldown change from XP alone.
@@ -35,15 +53,15 @@ cooldown change from XP alone.
 
 Instance administrators can set **XP per new character** and **Level thresholds
 (total XP)** in the **Rules** step of **Administration → New realm**. Realm configuration version **3** introduced
-these rules; current v11 also includes wishlist, gem-claim, collector-track and
-character-value rules:
+these rules (with the original five levels); current v14 has the 100-level
+default. An excerpt:
 
 ```json
 {
   "schemaVersion": 3,
   "progression": {
     "xpPerNewCharacter": 10,
-    "levelThresholds": [0, 20, 40, 70, 100]
+    "levelThresholds": [0, 20, 40, 70, 100, 140, 180, 230, …, 25990]
   }
 }
 ```

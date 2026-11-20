@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   defaultGemRewards,
+  defaultProgression,
   disabledGemRewards,
   parseRealmConfig,
   gemRewardsSchema,
@@ -15,6 +16,8 @@ describe('timed gem reward rules', () => {
     expect(parseRealmConfig({ ...legacyRules(v7), schemaVersion: 7 })).toEqual({
       ...defaultConfig,
       gemRewards: disabledGemRewards,
+      // The original five levels become the 100-level curve (config v14).
+      progression: defaultProgression,
     });
     expect(() => parseRealmConfig({ ...defaultConfig, schemaVersion: 7 })).toThrow();
   });

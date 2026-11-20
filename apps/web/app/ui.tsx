@@ -1039,6 +1039,7 @@ export function Dashboard({
                   view={view.rankTracks}
                   realmId={view.id}
                   revision={view.configRevision}
+                  openingCooldown={view.config.cooldownSeconds > 0}
                   disabled={
                     !!busy ||
                     !!pending ||

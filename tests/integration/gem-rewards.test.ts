@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  defaultLevelThresholds,
   disabledGemRewards,
   disabledFameFloors,
   parseRealmConfig,
@@ -339,7 +340,9 @@ describe('transactional timed gem claims', () => {
         (await legacy.query('SELECT config FROM realms WHERE id=$1', [id])).rows[0].config,
       ).toEqual({
         ...previous,
-        schemaVersion: 13,
+        schemaVersion: 14,
+        // The original five levels become the 100-level curve (migration 0033).
+        progression: { ...previous.progression, levelThresholds: defaultLevelThresholds },
         recycleSafeguard: true,
         fameFloors: disabledFameFloors,
         legacyPurchasesRetired: false,

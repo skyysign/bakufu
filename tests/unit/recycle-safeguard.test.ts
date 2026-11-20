@@ -10,7 +10,7 @@ import {
 
 describe('recycling safeguard (realm config v13)', () => {
   it('is on for new realms and protects only epic and legendary cards', () => {
-    expect(defaultConfig.schemaVersion).toBe(13);
+    expect(defaultConfig.schemaVersion).toBe(14);
     expect(defaultConfig.recycleSafeguard).toBe(true);
     expect(recycleNeedsConfirmation(defaultConfig, 'common')).toBe(false);
     expect(recycleNeedsConfirmation(defaultConfig, 'rare')).toBe(false);

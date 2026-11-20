@@ -7,10 +7,17 @@ know which backups it can restore.
 
 ## Unreleased
 
-Newest migration: `0032_profile_pages.sql` (realm config v13).
+Newest migration: `0033_level_curve.sql` (realm config v14).
 
 ### Added
 
+- **100 levels instead of 5**: the default level curve goes up to level 100
+  (25,990 XP, about 2,600 new characters at 10 XP each); the step grows by 10
+  XP every two levels. Realms still on the original five levels get it on
+  update (migration 0033, realm config v14), and players get the level their XP
+  already earned, since XP kept counting at the old cap. The first five levels
+  are unchanged, so nobody loses a level; realms with their own levels keep
+  them.
 - **More than one admin per realm**: Administration → Players & access →
   **Realm admins** lists a realm's admins; any admin can make another member an
   admin (search by name or trade ID) or remove one again, and can step down. The
@@ -161,6 +168,14 @@ Newest migration: `0032_profile_pages.sql` (realm config v13).
 
 ### Fixed
 
+- Browsers cache the website's script and font files again. Every response
+  was marked "never store", so each page load downloaded every file again
+  (one of them about 350 KB). Now only pages and the API are never stored;
+  build files, whose names change with every release, are cached for a year.
+- The production Content Security Policy no longer allows `eval` (only
+  development needs it).
+- A rank perk that shortens the opening cooldown is no longer listed while the
+  realm has no opening cooldown.
 - Typing a gem amount in a trade offer no longer shows a leading 0 ("0500"):
   the field starts empty.
 - The roster size slider's labels (100, 1,000, 10,000, …) now sit where the

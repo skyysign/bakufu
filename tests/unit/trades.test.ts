@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultProgression,
   defaultTrading,
   parseRealmConfig,
   disabledCollectorRanks,
@@ -25,6 +26,8 @@ describe('two-party trade rules', () => {
       ranks: disabledCollectorRanks,
       gemRewards: disabledGemRewards,
       packPrice: 7,
+      // The original five levels become the 100-level curve (config v14).
+      progression: defaultProgression,
     });
     expect(() => parseRealmConfig({ ...defaultConfig, schemaVersion: 5 })).toThrow();
     expect(() => parseRealmConfig({ ...defaultConfig, schemaVersion: 999 })).toThrow();

@@ -1,6 +1,7 @@
 import { generateKeyPairSync, randomBytes, randomUUID, sign } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  defaultLevelThresholds,
   disabledCollectorRanks,
   disabledGemRewards,
   disabledFameFloors,
@@ -544,7 +545,9 @@ describe('signed Discord gameplay with shared PostgreSQL state', () => {
         expect(realm.config.schemaVersion).toBe(6);
         realm.config = {
           ...realm.config,
-          schemaVersion: 13,
+          schemaVersion: 14,
+          // The original five levels become the 100-level curve (migration 0033).
+          progression: { ...realm.config.progression, levelThresholds: defaultLevelThresholds },
           recycleSafeguard: true,
           fameFloors: disabledFameFloors,
           legacyPurchasesRetired: false,

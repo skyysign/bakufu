@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseRealmConfig,
+  defaultProgression,
   defaultCollectorRanks,
   disabledCollectorRanks,
   disabledGemRewards,
@@ -23,6 +24,8 @@ describe('gem-purchased collector rank rules', () => {
       ...defaultConfig,
       ranks: disabledCollectorRanks,
       gemRewards: disabledGemRewards,
+      // The original five levels become the 100-level curve (config v14).
+      progression: defaultProgression,
     });
     expect(() => parseRealmConfig({ ...defaultConfig, schemaVersion: 6 })).toThrow();
     expect(() => parseRealmConfig({ ...defaultConfig, schemaVersion: 999 })).toThrow();

@@ -33,4 +33,5 @@ export const migrationNames = [
   '0030_trade_proposals.sql',
   '0031_recycle_safeguard.sql',
   '0032_profile_pages.sql',
+  '0033_level_curve.sql',
 ] as const;

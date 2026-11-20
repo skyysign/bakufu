@@ -14,7 +14,7 @@ describe('versioned XP and levels', () => {
   it('upgrades v1/v2 rules while preserving prior economy overrides', () => {
     expect(parseRealmConfig(legacyConfig)).toEqual({
       ...legacyConfig,
-      schemaVersion: 13,
+      schemaVersion: 14,
       recycleSafeguard: true,
       fameFloors: disabledFameFloors,
       legacyPurchasesRetired: false,
@@ -38,7 +38,7 @@ describe('versioned XP and levels', () => {
     expect(parseRealmConfig(v2)).toEqual({
       ...v2,
       recycleRewards: { ...v2.recycleRewards, epic: 0, legendary: 0 },
-      schemaVersion: 13,
+      schemaVersion: 14,
       recycleSafeguard: true,
       fameFloors: disabledFameFloors,
       legacyPurchasesRetired: false,

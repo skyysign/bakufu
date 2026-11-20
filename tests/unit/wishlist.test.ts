@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultProgression,
   parseRealmConfig,
   disabledCollectorRanks,
   disabledGemRewards,
@@ -31,6 +32,8 @@ describe('wishlist weighting and capacity', () => {
       ranks: disabledCollectorRanks,
       gemRewards: disabledGemRewards,
       packPrice: 7,
+      // The original five levels become the 100-level curve (config v14).
+      progression: defaultProgression,
     });
     expect(wishlist).toEqual({ slots: 3, weightMultiplier: 2 });
     expect(() => parseRealmConfig({ ...defaultConfig, schemaVersion: 4 })).toThrow();

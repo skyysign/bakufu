@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultProgression,
   defaultUpgrades,
   parseRealmConfig,
   disabledCollectorRanks,
@@ -32,6 +33,8 @@ describe('purchasable pack discounts', () => {
       ranks: disabledCollectorRanks,
       gemRewards: disabledGemRewards,
       packPrice: 12,
+      // The original five levels become the 100-level curve (config v14).
+      progression: defaultProgression,
     });
     expect(() => parseRealmConfig({ ...defaultConfig, schemaVersion: 3 })).toThrow();
   });

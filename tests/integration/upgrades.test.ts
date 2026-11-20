@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  defaultProgression,
   disabledCollectorRanks,
   disabledGemRewards,
   type RealmConfig,
@@ -317,7 +318,13 @@ describe('transactional upgrade purchases and effective pack prices', () => {
         packPrice: 10,
         upgrade: { rank: 0 },
         progression: { totalXp: 30 },
-        config: { ...defaultConfig, ranks: disabledCollectorRanks, gemRewards: disabledGemRewards },
+        config: {
+          ...defaultConfig,
+          ranks: disabledCollectorRanks,
+          gemRewards: disabledGemRewards,
+          // The original five levels become the 100-level curve (migration 0033).
+          progression: defaultProgression,
+        },
       });
       await restoreBackup(target, backup, passphrase);
       expect((await target.query(sql)).rows).toEqual(expected);

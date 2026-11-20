@@ -7,6 +7,7 @@ import {
   disabledRankTracks,
   disabledCharacterValues,
   disabledFameFloors,
+  legacyLevelThresholds,
 } from '../../packages/config/src/index';
 export const defaultConfig = {
   ...current,
@@ -24,6 +25,8 @@ export const defaultConfig = {
   characterValues: disabledCharacterValues,
   // These fixtures predate fame floors and use original (non-provider) catalogs.
   fameFloors: disabledFameFloors,
+  // And the original five levels (config v14 has 100 by default).
+  progression: { ...current.progression, levelThresholds: legacyLevelThresholds },
 };
 export function legacyRules<
   T extends {

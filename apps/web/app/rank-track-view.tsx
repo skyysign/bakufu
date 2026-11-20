@@ -15,7 +15,8 @@ export function durationText(seconds: number) {
       .join(' ') || '0 s'
   );
 }
-function benefitsText(benefits: RankTracksView['benefits']) {
+/** Perk texts; an opening-cooldown cut is left out while the realm has no opening cooldown. */
+function benefitsText(benefits: RankTracksView['benefits'], openingCooldown: boolean) {
   return [
     benefits.packDiscount ? `${benefits.packDiscount} gems off every pack` : null,
     benefits.recycleBonus ? `+${benefits.recycleBonus} recycling gems` : null,
@@ -23,7 +24,7 @@ function benefitsText(benefits: RankTracksView['benefits']) {
     benefits.gemClaimReductionSeconds
       ? `free gems ${durationText(benefits.gemClaimReductionSeconds)} sooner`
       : null,
-    benefits.cooldownReductionSeconds
+    benefits.cooldownReductionSeconds && openingCooldown
       ? `${durationText(benefits.cooldownReductionSeconds)} less opening cooldown`
       : null,
   ].filter(Boolean);
@@ -34,12 +35,15 @@ export function RankTracks({
   revision,
   disabled,
   onLockChange,
+  openingCooldown = true,
 }: {
   view: RankTracksView;
   realmId: string;
   revision: number;
   disabled: boolean;
   onLockChange: (locked: boolean) => void;
+  /** Whether the realm has an opening cooldown that rank perks can shorten. */
+  openingCooldown?: boolean;
 }) {
   const router = useRouter(),
     [busy, setBusy] = useState(false),
@@ -149,13 +153,15 @@ export function RankTracks({
                 <div className="rank-benefits">
                   <p className="rank-current-benefits">
                     <span>Active perks</span>
-                    {track.level ? benefitsText(track.benefits).join(' · ') : 'None yet'}
+                    {track.level
+                      ? benefitsText(track.benefits, openingCooldown).join(' · ') || 'None'
+                      : 'None yet'}
                   </p>
                   {track.next && (
                     <div className="rank-next-benefits">
                       <span>Level {track.next.level} unlocks</span>
                       <ul>
-                        {benefitsText(track.next.benefits).map((text) => (
+                        {benefitsText(track.next.benefits, openingCooldown).map((text) => (
                           <li key={text}>{text}</li>
                         ))}
                       </ul>

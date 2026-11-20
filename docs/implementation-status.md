@@ -130,7 +130,9 @@ per card), and from the collection with **Recycle several** (select cards or
 every card shown, sent in retry-safe batches of 50). The **recycling safeguard**
 (realm config v13, migration 0031, on by default and in Game rules → Collection)
 makes epic and legendary cards need a second click and keeps them out of bulk
-recycling, enforced by the server. Provider rosters walk more kinds of series (MyAnimeList: TV anime,
+recycling, enforced by the server. Levels go up to **100** by default (realm
+config v14, migration 0033); realms still on the original five levels get the
+new curve on update, and players the level their XP already earned. Provider rosters walk more kinds of series (MyAnimeList: TV anime,
 web anime/ONA with most donghua, films, manga, manhwa, manhua, light novels;
 AniList: anime, donghua, manga, manhwa, manhua, light novels by country and
 format) with up to 100 characters per series. **Administration → Characters**

@@ -63,7 +63,7 @@ purchases retain their benefits and immutable receipts; they are not reset or
 converted into invented new track levels.
 
 Config v10 adds rankTracks and migration 0020 adds the append-only purchase
-journal. Current config v13 retains these rules. Personal archive v12 includes
+journal. Current config v14 retains these rules. Personal archive v12 includes
 track rules, owned levels and purchase
 receipts; encrypted instance backups preserve and validate the journal during
 fresh recovery. Earlier archives remain readable.

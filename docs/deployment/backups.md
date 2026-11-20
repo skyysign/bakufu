@@ -217,3 +217,7 @@ existing realms); it adds no table. Snapshots taken before 0031 restore with
 the safeguard on. Migration 0032 adds `profile_pages` (each player's profile
 text, colour, showcase and wishlist switch); restores check that every page is
 well formed. Snapshots taken before 0032 restore with default pages.
+Migration 0033 advances realm config to v14: realms still on the original five
+levels get the 100-level default (levels follow from each player's XP, which
+is unchanged); it adds no table. Snapshots taken before 0033 restore the same
+way, and realms with their own levels keep them.

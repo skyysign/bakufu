@@ -17,6 +17,7 @@ import {
   starterPackPlanSchema,
   withoutFameFloors,
   withoutRecycleSafeguard,
+  parseV13RealmConfig,
   type Tier,
 } from '../../config/src/index';
 import {
@@ -141,7 +142,18 @@ export function prepareRealmCatalog(
   const fingerprint = fingerprintFor(config);
   // Preserve immutable receipts from both pre-reward releases (config v6/v7).
   const legacyFingerprints: string[] = [];
-  const v11 = withoutFameFloors(config);
+  // Before config v14 (the 100-level curve) requests were fingerprinted in the
+  // v13 shape, with the levels they were sent with; older shapes derive from it.
+  const v13 =
+    typeof input === 'object' &&
+    input !== null &&
+    'schemaVersion' in input &&
+    typeof input.schemaVersion === 'number' &&
+    input.schemaVersion <= 13
+      ? parseV13RealmConfig(input)
+      : null;
+  if (v13) legacyFingerprints.push(fingerprintFor(v13));
+  const v11 = withoutFameFloors(v13 ?? config);
   // Before the recycling safeguard (config v13) every request was fingerprinted
   // in the v12 shape.
   if (
@@ -151,7 +163,7 @@ export function prepareRealmCatalog(
     typeof input.schemaVersion === 'number' &&
     input.schemaVersion <= 12
   )
-    legacyFingerprints.push(fingerprintFor(withoutRecycleSafeguard(config)));
+    legacyFingerprints.push(fingerprintFor(withoutRecycleSafeguard(v13 ?? config)));
   if (
     typeof input === 'object' &&
     input !== null &&

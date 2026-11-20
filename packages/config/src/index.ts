@@ -106,10 +106,36 @@ export const progressionSchema = z.strictObject({
       'Level thresholds must be strictly increasing.',
     ),
 });
+/** The original five-level curve (config v3 to v13). */
+export const legacyLevelThresholds = [0, 20, 40, 70, 100];
+/**
+ * Total XP for each level of the default curve: 100 levels whose step grows by
+ * 10 XP every two levels (20, 20, 30, 30, 40, …). The first five match the
+ * original curve, so extending it never lowers a level. With 10 XP per new
+ * character: level 10 at 34 characters, 50 at 674, 100 at 2,599.
+ */
+export const defaultLevelThresholds: number[] = Array.from({ length: 99 }).reduce<number[]>(
+  (thresholds, _, index) => [
+    ...thresholds,
+    thresholds[index] + 10 * (Math.floor((index + 2) / 2) + 1),
+  ],
+  [0],
+);
+const legacyProgression = {
+  xpPerNewCharacter: 10,
+  levelThresholds: legacyLevelThresholds,
+};
 export const defaultProgression = {
   xpPerNewCharacter: 10,
-  levelThresholds: [0, 20, 40, 70, 100],
+  levelThresholds: defaultLevelThresholds,
 };
+/** Realms still on the original five-level curve move to the default one. */
+export function withDefaultLevelCurve<T extends { levelThresholds: number[] }>(progression: T): T {
+  return progression.levelThresholds.length === legacyLevelThresholds.length &&
+    progression.levelThresholds.every((value, index) => value === legacyLevelThresholds[index])
+    ? { ...progression, levelThresholds: [...defaultLevelThresholds] }
+    : progression;
+}
 const realmConfigV3Schema = realmConfigV2Schema.extend({
   schemaVersion: z.literal(3),
   progression: progressionSchema,
@@ -209,13 +235,19 @@ const realmConfigV12Schema = realmConfigV11Schema.extend({
   schemaVersion: z.literal(12),
   fameFloors: fameFloorsSchema,
 });
-export const realmConfigSchema = realmConfigV12Schema.extend({
+const realmConfigV13Schema = realmConfigV12Schema.extend({
   schemaVersion: z.literal(13),
   // Epic and legendary cards need a second confirmation to recycle and are
   // never part of a bulk recycling.
   recycleSafeguard: z.boolean(),
 });
+// v14 has the same fields; realms on the original five-level curve get the
+// 100-level default (migration 0033).
+export const realmConfigSchema = realmConfigV13Schema.extend({
+  schemaVersion: z.literal(14),
+});
 export type RealmConfig = z.infer<typeof realmConfigSchema>;
+export type RealmConfigV13 = z.infer<typeof realmConfigV13Schema>;
 /** Rarities the recycling safeguard protects when it is on. */
 export const safeguardedTiers: readonly Tier[] = ['epic', 'legendary'];
 export function recycleNeedsConfirmation(
@@ -225,7 +257,7 @@ export function recycleNeedsConfirmation(
   return config.recycleSafeguard && safeguardedTiers.includes(tier);
 }
 export const defaultConfig: RealmConfig = realmConfigSchema.parse({
-  schemaVersion: 13,
+  schemaVersion: 14,
   recycleSafeguard: true,
   legacyPurchasesRetired: true,
   ownership: 'unique',
@@ -274,7 +306,7 @@ function parseLegacyRealmConfig(input: unknown) {
       gemRewards: disabledGemRewards,
       ranks: disabledCollectorRanks,
       recycleRewards: legacyRecycleRewards,
-      progression: defaultProgression,
+      progression: legacyProgression,
       upgrades: defaultUpgrades,
       wishlist: defaultWishlist,
       trading: defaultTrading,
@@ -291,7 +323,7 @@ function parseLegacyRealmConfig(input: unknown) {
       schemaVersion: 8,
       gemRewards: disabledGemRewards,
       ranks: disabledCollectorRanks,
-      progression: defaultProgression,
+      progression: legacyProgression,
       upgrades: defaultUpgrades,
       wishlist: defaultWishlist,
       trading: defaultTrading,
@@ -376,9 +408,28 @@ export function parseRealmConfig(input: unknown): RealmConfig {
     typeof input === 'object' && input !== null && 'schemaVersion' in input
       ? input.schemaVersion
       : undefined;
-  if (version === 13) return realmConfigSchema.parse(input);
-  // The recycling safeguard starts on for every realm (migration 0031).
+  if (version === 14) return realmConfigSchema.parse(input);
+  // Realms on the original five-level curve get the 100-level one; XP is kept,
+  // so levels follow from it (migration 0033).
+  const v13 = parseV13RealmConfig(input);
   return realmConfigSchema.parse({
+    ...v13,
+    schemaVersion: 14,
+    progression: withDefaultLevelCurve(v13.progression),
+  });
+}
+/**
+ * A v13 or older config in its v13 shape, as it was read before config v14:
+ * for recognizing requests and receipts written then.
+ */
+export function parseV13RealmConfig(input: unknown): RealmConfigV13 {
+  const version =
+    typeof input === 'object' && input !== null && 'schemaVersion' in input
+      ? input.schemaVersion
+      : undefined;
+  if (version === 13) return realmConfigV13Schema.parse(input);
+  // The recycling safeguard starts on for every realm (migration 0031).
+  return realmConfigV13Schema.parse({
     ...parseV12RealmConfig(input),
     schemaVersion: 13,
     recycleSafeguard: true,
@@ -425,13 +476,13 @@ function parseV12RealmConfig(input: unknown) {
 }
 
 /** A v13 config in its v12 shape, for recognizing receipts written before the safeguard. */
-export function withoutRecycleSafeguard(config: RealmConfig) {
+export function withoutRecycleSafeguard(config: RealmConfig | RealmConfigV13) {
   const { recycleSafeguard: _safeguard, ...rest } = config;
   void _safeguard;
   return { ...rest, schemaVersion: 12 as const };
 }
 /** A config in its v11 shape, for recognizing receipts written before fame floors. */
-export function withoutFameFloors(config: RealmConfig) {
+export function withoutFameFloors(config: RealmConfig | RealmConfigV13) {
   const { fameFloors: _floors, ...rest } = withoutRecycleSafeguard(config);
   void _floors;
   return { ...rest, schemaVersion: 11 as const };

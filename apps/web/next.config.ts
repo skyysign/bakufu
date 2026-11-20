@@ -1,5 +1,11 @@
 import type { NextConfig } from 'next';
 
+// Development needs eval for React's debugging tools; a production build does not.
+const scriptSources =
+  process.env.NODE_ENV === 'production'
+    ? "'self' 'unsafe-inline'"
+    : "'self' 'unsafe-inline' 'unsafe-eval'";
+
 const config: NextConfig = {
   transpilePackages: ['@card-engine/core', '@card-engine/config', '@card-engine/db'],
   poweredByHeader: false,
@@ -15,11 +21,17 @@ const config: NextConfig = {
           { key: 'Referrer-Policy', value: 'same-origin' },
           {
             key: 'Content-Security-Policy',
-            value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.myanimelist.net https://s4.anilist.co https://cdn.discordapp.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            value: `default-src 'self'; script-src ${scriptSources}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.myanimelist.net https://s4.anilist.co https://cdn.discordapp.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
           },
-          { key: 'Cache-Control', value: 'private, no-store' },
         ],
+      },
+      {
+        // Pages and the API can show signed-in data, so browsers never store them.
+        // Build files under /_next/static have a content hash in their names; left
+        // without a header here, Next.js marks them cacheable for a year, so a page
+        // load doesn't download every script and font again.
+        source: '/((?!_next/static/).*)',
+        headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
       },
       {
         source: '/api/auth/discord/callback',

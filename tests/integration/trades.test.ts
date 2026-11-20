@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  defaultLevelThresholds,
   disabledCollectorRanks,
   disabledGemRewards,
   disabledFameFloors,
@@ -502,7 +503,7 @@ describe('atomic two-party trading', () => {
         balance: 90,
         configRevision: 2,
         config: {
-          schemaVersion: 13,
+          schemaVersion: 14,
           recycleSafeguard: true,
           fameFloors: disabledFameFloors,
           packPrice: 12,
@@ -514,7 +515,9 @@ describe('atomic two-party trading', () => {
       });
       expect(view.config).toEqual({
         ...after,
-        schemaVersion: 13,
+        schemaVersion: 14,
+        // The original five levels become the 100-level curve (migration 0033).
+        progression: { ...after.progression, levelThresholds: defaultLevelThresholds },
         recycleSafeguard: true,
         fameFloors: disabledFameFloors,
         legacyPurchasesRetired: false,

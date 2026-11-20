@@ -65,7 +65,7 @@ describe('updating a played realm to the recycling safeguard (migration 0031)', 
           after_config=(after_config-'recycleSafeguard')||'{"schemaVersion":12}'::jsonb;
         ALTER TABLE realms ADD CONSTRAINT realms_config_check CHECK(config->>'schemaVersion'='12' AND config->>'ownership'='unique');
         DROP TABLE profile_pages;
-        DELETE FROM schema_migrations WHERE name IN ('0031_recycle_safeguard.sql','0032_profile_pages.sql');`);
+        DELETE FROM schema_migrations WHERE name IN ('0031_recycle_safeguard.sql','0032_profile_pages.sql','0033_level_curve.sql');`);
       expect(
         (await db.query('SELECT config FROM realms WHERE id=$1', [realm])).rows[0].config,
       ).not.toHaveProperty('recycleSafeguard');

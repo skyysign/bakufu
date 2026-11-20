@@ -147,7 +147,32 @@ try {
     releaseScripts();
     await delayedContext.close();
   }
+  // Pages are never stored; content-hashed build files are cacheable for a year
+  // and keep the security headers. Production scripts may not use eval.
+  const signInResponse = await fetch(origin);
+  expect(signInResponse.headers.get('cache-control')).toBe('private, no-store');
+  const csp = signInResponse.headers.get('content-security-policy') ?? '';
+  expect(csp).toContain("script-src 'self' 'unsafe-inline';");
+  expect(csp).not.toContain('unsafe-eval');
+  const buildFile = (await signInResponse.text()).match(/\/_next\/static\/[^"'\s]+\.js/)?.[0];
+  expect(buildFile).toBeTruthy();
+  const buildFileResponse = await fetch(`${origin}${buildFile}`);
+  expect(buildFileResponse.status).toBe(200);
+  expect(buildFileResponse.headers.get('cache-control')).toBe(
+    'public, max-age=31536000, immutable',
+  );
+  expect(buildFileResponse.headers.get('content-security-policy')).toBe(csp);
+  expect(buildFileResponse.headers.get('x-content-type-options')).toBe('nosniff');
+  await buildFileResponse.arrayBuffer();
+  // Anything the policy blocks (a script, a style, eval) is reported as a console error.
+  const cspViolations: string[] = [];
+  const watchCsp = (target: typeof delayedContext) =>
+    target.on('console', (message) => {
+      if (message.type() === 'error' && /Content Security Policy/i.test(message.text()))
+        cspViolations.push(message.text());
+    });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  watchCsp(context);
   await context.route('**/*', (route) =>
     new URL(route.request().url()).origin === origin ? route.continue() : route.abort(),
   );
@@ -714,6 +739,7 @@ try {
       password,
     ),
     playerContext = await browser.newContext();
+  watchCsp(playerContext);
   await playerContext.request.post(`${origin}/api/login`, {
     headers: { Origin: origin },
     data: { email: 'ordinary-screen-player@example.test', password },
@@ -847,6 +873,7 @@ try {
   const tradeBeforeA = await getRealmView(db, admin, tradeRealm),
     tradeBeforeB = await getRealmView(db, partner, tradeRealm);
   const partnerContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  watchCsp(partnerContext);
   await partnerContext.route('**/*', (route) =>
     new URL(route.request().url()).origin === origin ? route.continue() : route.abort(),
   );
@@ -1149,6 +1176,7 @@ try {
   await discordSetup.getByRole('button', { name: 'Unlink Discord server', exact: true }).click();
   await expect(discordSetup.getByRole('alert')).toContainText('Disable server joining');
   const guestContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  watchCsp(guestContext);
   let guestSubject = '500000000000000001',
     guestGuild: string | undefined = admissionGuild;
   await guestContext.route('**/*', (route) =>
@@ -1283,6 +1311,7 @@ try {
     password,
   );
   expect(pageErrors).toEqual([]);
+  expect(cspViolations).toEqual([]);
   await context.close();
   console.log(
     'Browser checks passed: physical cards/inspection, consecutive cooldown-free 1/5/10 openings, popularity/demand values, 1000-character glossary, visual trade/wishlist pickers, single-click collector ranks/recycling and replay, fame floors/manual tiers, opening recycling/roster growth/character removal, five-tier motion/sound, Discord avatars/fallback, route scroll recovery, atomic pack loading/reveals, XP/gem timers, market/trading/retry receipts, player archive v12, player profiles/directory, bulk recycling, adding and removing realm admins, account/Discord/provider/catalog flows, RBAC/CSRF and desktop/mobile accessibility.',
