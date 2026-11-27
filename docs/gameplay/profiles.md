@@ -76,5 +76,6 @@ drives the pages on desktop and phone: profile picture, editor, directory,
 another player's page, their collection, and **Propose a trade**.
 
 Not built: profiles outside a realm (public links), custom banner images,
-following players, and Discord commands for profiles. Names in the Live pulls
-feed do not link to profiles yet.
+following players, and Discord commands for profiles. Owner names in the
+character glossary and on wishlist cards open that player's profile; collector
+names in the Live pulls feed do not link to profiles yet.

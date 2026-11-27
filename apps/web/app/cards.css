@@ -272,7 +272,22 @@ button.recycle-button {
   font-size: 14px;
   font-weight: 600;
 }
+.library-card-status > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* "Owned by <name>": the name opens that player's profile. */
+.library-card-status a {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+}
+.library-card-status a:hover {
+  text-decoration-color: currentColor;
+}
 .library-card-status::before {
+  flex: none;
   content: '';
   width: 8px;
   height: 8px;

@@ -32,6 +32,7 @@ import {
   type OpeningResult,
 } from '../../core/src/index';
 import { addMembership, requireInstanceAdmin } from './auth';
+import { characterHolders, type CardOwner } from './card-owners';
 import { transaction, type Database, type Transaction } from './connection';
 import { purchasedUpgradeRank } from './upgrade-state';
 import { wishlistEntries } from './wishlist-state';
@@ -453,6 +454,8 @@ export type RealmView = {
     entryId: string;
     addedAt: string;
     status: 'yours' | 'claimed' | 'available';
+    /** The member holding a claimed wish. */
+    owner?: CardOwner;
   })[];
   cards: (Character & {
     cardId: string;
@@ -577,11 +580,25 @@ export async function getRealmView(
           [realmId, actorId],
         )
       ).rows[0];
-      const wishlist = wishes.map((entry) => ({
-        ...catalog.find((character) => character.id === entry.character_id)!,
-        entryId: entry.id,
-        addedAt: entry.created_at.toISOString(),
-      }));
+      const wished = wishes.map((entry) =>
+        catalog.find((character) => character.id === entry.character_id)!,
+      );
+      const holders = await characterHolders(
+        tx,
+        realmId,
+        actorId,
+        wished.filter((character) => character.status === 'claimed').map(({ id }) => id),
+      );
+      const wishlist = wishes.map((entry, index) => {
+        const owner =
+          wished[index].status === 'claimed' ? holders.get(wished[index].id)?.owner : null;
+        return {
+          ...wished[index],
+          ...(owner ? { owner } : {}),
+          entryId: entry.id,
+          addedAt: entry.created_at.toISOString(),
+        };
+      });
       const trades = await tradeViews(tx, realmId, actorId);
       return {
         id: realmId,

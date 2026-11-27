@@ -43,7 +43,8 @@ export {
   maximumRealmCategoryPacks,
 } from './realm-packs';
 export type { RealmPackPlan, RealmPackCandidate, RealmPackAddition } from './realm-packs';
-export { pullFeedChanged, recentPulls } from './pull-feed';
+export { pullFeedChanged, pullFeedPageSize, recentPulls } from './pull-feed';
+export type { CardOwner } from './card-owners';
 export type { PullFeed, PulledCard } from './pull-feed';
 export {
   setTierSound,

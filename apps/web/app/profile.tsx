@@ -8,29 +8,18 @@ import {
   tiers,
   type ProfileTheme,
 } from '@card-engine/config';
-import type {
-  PlayerDirectory,
-  PlayerDirectoryEntry,
-  PlayerProfile,
-  PlayerSummary,
-} from '@card-engine/db';
+import type { PlayerDirectory, PlayerDirectoryEntry, PlayerProfile } from '@card-engine/db';
 import type { ClientRealmView as RealmView } from '../lib/client-view';
 import { ApiError, post } from './api-client';
 import { PageHeader } from './app-shell';
 import { CardFace, CardPicker, InspectableCard, type BrowseCard } from './card-browser';
 import { DiscordAvatar } from './discord-avatar';
 import { GameIcon } from './game-art';
+import { playerName, profileHref } from './player-links';
 import './profile.css';
 
 export type ProfileView = 'profile' | 'players';
 const romanLevels = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-/** Players without a Discord name are shown by the start of their trade ID. */
-export function playerName(player: Pick<PlayerSummary, 'displayName' | 'username' | 'tradeCode'>) {
-  return player.displayName ?? player.username ?? `Player ${player.tradeCode.slice(0, 6)}`;
-}
-export function profileHref(realmId: string, tradeCode?: string) {
-  return `/profile?realm=${encodeURIComponent(realmId)}${tradeCode ? `&player=${encodeURIComponent(tradeCode)}` : ''}`;
-}
 const playersHref = (realmId: string) =>
   `/profile?realm=${encodeURIComponent(realmId)}&view=players`;
 

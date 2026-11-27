@@ -136,6 +136,18 @@ describe('database transfer budget', () => {
     expect(viewBytes).toBeLessThan(80_000);
     expect(openingBytes).toBeLessThan(40_000);
     expect(pullBytes).toBeLessThan(25_000);
+    // Scrolling back loads one more page of the same size.
+    const firstPage = await recentPulls(measured, player, realm);
+    expect(firstPage.more).toBe(true);
+    const [openingId, index] = firstPage.pulls.at(-1)!.key.split(':');
+    let olderPage = firstPage;
+    const olderBytes = await bytes(async () => {
+      olderPage = await recentPulls(measured, player, realm, {
+        before: { openingId, index: Number(index) },
+      });
+    });
+    expect(olderPage.pulls.length).toBeGreaterThan(0);
+    expect(olderBytes).toBeLessThan(25_000);
 
     // The 15-second poll only asks whether anything newer was pulled.
     const feed = await recentPulls(measured, player, realm);

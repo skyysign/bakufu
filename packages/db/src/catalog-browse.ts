@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { parseRealmConfig, tiers, type Tier } from '../../config/src/index';
 import type { Character, CharacterValue } from '../../core/src/index';
+import { characterHolders, type CardOwner } from './card-owners';
 import { characterValuesForRealm } from './character-values';
 import { transaction, type Database } from './connection';
 import { requireMember } from './game';
@@ -19,6 +20,8 @@ const browseSchema = z.strictObject({
 export type CatalogBrowseInput = z.input<typeof browseSchema>;
 export type CatalogBrowseCharacter = Character & {
   status: 'yours' | 'claimed' | 'available';
+  /** The member holding a claimed character. */
+  owner?: CardOwner;
   valuation: CharacterValue;
 };
 export type CatalogBrowsePage = {
@@ -101,13 +104,21 @@ export async function browseRealmCatalog(
       const values = rows.length
         ? await characterValuesForRealm(tx, realmId, config, effectiveConfig)
         : {};
+      const holders = await characterHolders(
+        tx,
+        realmId,
+        actorId,
+        rows.filter((row) => row.status === 'claimed').map((row) => row.id as string),
+      );
       return {
         characters: rows.map(({ artwork, total: _total, ...character }) => {
           void _total;
+          const owner = character.status === 'claimed' ? holders.get(character.id)?.owner : null;
           return {
             ...character,
             tier: character.tier as Tier,
             ...(artwork ? { artwork } : {}),
+            ...(owner ? { owner } : {}),
             valuation: values[character.id],
           };
         }),

@@ -32,7 +32,8 @@ replays the end of that card's reveal: its rarity effect layer (foil sweep,
 crossing orbits, summoning circle or ascension gate) settles behind the card while
 the card makes its tier arrival. Reduced motion shows the card without effects.
 Live pulls open the same details as the collection: character value, recycling
-estimate, saved popularity, collector demand and who owns the card now.
+estimate, saved popularity, collector demand and who owns the card now
+(**Owned by** and the player's name).
 
 The opening must succeed before any awarded cards appear. The pending preparation
 screen contains an original sealed pack, never invented outcomes. A network failure keeps **Retry this opening**, using

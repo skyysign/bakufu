@@ -361,10 +361,14 @@ export async function verifyJikanBrowser(
       await details.getByRole('button', { name: 'Close card inspection' }).click();
       await expect(details).toBeHidden();
     } else await expect(live).toContainText('No big pulls yet');
+    // One row without a scrollbar; it never makes the page scroll sideways.
     expect(
       await live.evaluate((section) => {
         const grid = section.querySelector('.pull-grid');
-        return !grid || grid.scrollWidth <= grid.clientWidth;
+        return (
+          (!grid || getComputedStyle(grid).scrollbarWidth === 'none') &&
+          document.documentElement.scrollWidth <= document.documentElement.clientWidth
+        );
       }),
     ).toBe(true);
     // Administration → Characters: look up one series and add only its missing cast.

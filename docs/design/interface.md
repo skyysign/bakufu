@@ -69,11 +69,19 @@ right).
 `app/pull-tracker.tsx` sits below the pack grid and shows the realm's latest
 rare, epic and legendary pulls (`GET /api/pulls`, members only; service `recentPulls` in
 `packages/db/src/pull-feed.ts`, backed by the `openings_realm_recent` index).
-It renders one row of card faces without scrolling (six on desktop, four on
-tablets, a 3×2 grid on phones); selecting a card opens the usual card inspector.
-It polls every 15 seconds while the tab is visible and right after your own
-opening, and new cards slide in. Collectors appear by Discord display name (never an email), or
-"A collector" without a Discord profile.
+It renders one row of card faces (six on desktop, four on tablets, three on
+phones) and loads the newest 12. The row has no scrollbar: round **newer** and
+**older** buttons at its sides appear while the pointer is over the row or a
+button has keyboard focus (always on touch screens, where a swipe works too).
+Each click moves one row's worth of cards; the next older 12 load
+(`GET /api/pulls?before=<opening ID>:<card index>`) once someone has scrolled
+back and nears the end, so the 15-second polls stay as small as before. At the
+end the older button stays focusable but dimmed. Selecting a card opens the
+usual card inspector, which names who owns the card now. It polls every 15
+seconds while the tab is visible and right after your own opening, and new cards
+slide in; while you are scrolled back, the row keeps showing the same cards.
+Collectors appear by Discord display name (never an email), or "A collector"
+without a Discord profile.
 
 ## Page frame
 

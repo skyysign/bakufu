@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { parseRealmConfig, tiers, type Tier } from '../../config/src/index';
 import type { CharacterValue } from '../../core/src/index';
 import { characterValuesForRealm } from './character-values';
+import { characterHolders, type CardOwner } from './card-owners';
 import { transaction, type Database } from './connection';
 import { requireMember } from './game';
 import { purchasedCollectorRank } from './rank-state';
@@ -25,24 +26,34 @@ export type PulledCard = {
   mine: boolean;
   /** Who holds the character now, as in the glossary. */
   status: 'yours' | 'claimed' | 'available';
+  /** The member holding a claimed character (not set for your own cards). */
+  owner?: CardOwner;
   /** Current character value, like collection and glossary cards. */
   valuation?: CharacterValue;
 };
-export type PullFeed = { pulls: PulledCard[] };
+/** `more`: older notable pulls exist beyond this page. */
+export type PullFeed = { pulls: PulledCard[]; more: boolean };
+/** Cards per page: the first load and each step further back. */
+export const pullFeedPageSize = 12;
 /** The Packs page shows notable pulls only. */
 export const notablePullTiers: readonly Tier[] = ['rare', 'epic', 'legendary'];
 
 /**
- * The realm's most recent pulls for the "Big pulls" tracker on the Packs page.
+ * The realm's most recent pulls for the "Live pulls" tracker on the Packs page.
  * Members only. Reads saved opening receipts, newest first (by default only
  * rare and above), so it shows exactly what was awarded and never queries
- * providers.
+ * providers. `before` (a pull's opening ID and card index) pages further back:
+ * the cards shown after that pull, in the same order.
  */
 export async function recentPulls(
   db: Database,
   actorId: string,
   realmId: string,
-  options: { limit?: number; tiers?: readonly Tier[] } = {},
+  options: {
+    limit?: number;
+    tiers?: readonly Tier[];
+    before?: { openingId: string; index: number };
+  } = {},
 ): Promise<PullFeed> {
   [actorId, realmId].forEach((value) => z.uuid().parse(value));
   const cards = z
@@ -50,11 +61,15 @@ export async function recentPulls(
     .int()
     .min(1)
     .max(48)
-    .parse(options.limit ?? 12);
+    .parse(options.limit ?? pullFeedPageSize);
   const wanted = z
     .array(z.enum(tiers))
     .min(1)
     .parse(options.tiers ?? notablePullTiers);
+  const before = z
+    .strictObject({ openingId: z.uuid(), index: z.number().int().min(0).max(1000) })
+    .optional()
+    .parse(options.before);
   return transaction(
     db,
     async (tx) => {
@@ -62,6 +77,9 @@ export async function recentPulls(
       // Only the notable cards leave the database, newest first: the latest
       // openings that contain one, then their wanted cards, last reveal first.
       // (Whole receipts of 10-pack openings were the bulk of each 15-second poll.)
+      // A page further back starts inside the `before` opening, at the cards
+      // revealed before that pull, so it may hold none of them: one opening
+      // more is read. One card more than the page tells whether more exist.
       const rows = (
         await tx.query(
           `SELECT o.id,o.created_at,o.mine,o.pack_name,o.username,o.display_name,o.avatar_url,
@@ -75,12 +93,14 @@ export async function recentPulls(
             LEFT JOIN discord_profiles p ON p.account_id=o.account_id
             WHERE o.realm_id=$1 AND o.result->>'ok'='true'
             AND EXISTS(SELECT 1 FROM jsonb_array_elements(o.result->'characters') c WHERE c->>'tier'=ANY($4::text[]))
-            ORDER BY o.created_at DESC,o.id DESC LIMIT $3
+            AND ($5::uuid IS NULL OR (o.created_at,o.id)<=(SELECT b.created_at,b.id FROM openings b WHERE b.realm_id=$1 AND b.id=$5))
+            ORDER BY o.created_at DESC,o.id DESC LIMIT $3+2
           ) o
           CROSS JOIN LATERAL jsonb_array_elements(o.characters) WITH ORDINALITY e(value,ordinality)
           WHERE e.value->>'tier'=ANY($4::text[])
-          ORDER BY o.created_at DESC,o.id DESC,e.ordinality DESC LIMIT $3`,
-          [realmId, actorId, cards, wanted],
+          AND ($5::uuid IS NULL OR o.id<>$5 OR e.ordinality-1<$6::int)
+          ORDER BY o.created_at DESC,o.id DESC,e.ordinality DESC LIMIT $3+1`,
+          [realmId, actorId, cards, wanted, before?.openingId ?? null, before?.index ?? 0],
         )
       ).rows;
       const pulls: PulledCard[] = [];
@@ -117,16 +137,15 @@ export async function recentPulls(
           status: 'available',
         });
       }
-      const shown = pulls.slice(0, cards);
-      if (!shown.length) return { pulls: shown };
+      const shown = pulls.slice(0, cards),
+        more = pulls.length > cards;
+      if (!shown.length) return { pulls: shown, more };
       // Same details as the collection and glossary inspectors.
-      const owners = new Map(
-        (
-          await tx.query(
-            'SELECT character_id,owner_id=$2 AS mine FROM cards WHERE realm_id=$1 AND recycled_at IS NULL AND character_id=ANY($3::uuid[])',
-            [realmId, actorId, [...new Set(shown.map((pull) => pull.characterId))]],
-          )
-        ).rows.map((row) => [row.character_id as string, row.mine as boolean]),
+      const holders = await characterHolders(
+        tx,
+        realmId,
+        actorId,
+        shown.map((pull) => pull.characterId),
       );
       const stored = (await tx.query('SELECT config FROM realms WHERE id=$1', [realmId])).rows[0]
         .config;
@@ -141,14 +160,16 @@ export async function recentPulls(
       );
       return {
         pulls: shown.map((pull) => {
-          const owned = owners.get(pull.characterId);
+          const holder = holders.get(pull.characterId);
           const valuation = values[pull.characterId];
           return {
             ...pull,
-            status: owned === undefined ? 'available' : owned ? 'yours' : 'claimed',
+            status: !holder ? 'available' : holder.mine ? 'yours' : 'claimed',
+            ...(holder?.owner ? { owner: holder.owner } : {}),
             ...(valuation ? { valuation } : {}),
           };
         }),
+        more,
       };
     },
     true,

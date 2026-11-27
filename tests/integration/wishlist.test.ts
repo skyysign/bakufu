@@ -221,6 +221,12 @@ describe('private realm wishlists and transactional targeting', () => {
     await open(r, randomUUID(), other);
     const unavailable = await getRealmView(db, admin, r.id);
     expect(unavailable.wishlist[0].status).toBe('claimed');
+    // The wish names the member who holds it.
+    expect(unavailable.wishlist[0].owner).toEqual({
+      tradeCode: (await getRealmView(db, other, r.id)).tradeCode,
+      displayName: null,
+      username: null,
+    });
     expect(unavailable.packs[0].wishlistChance).toBe(0);
     await change(r.id, id, false);
     expect(await open(r, key)).toEqual(first);

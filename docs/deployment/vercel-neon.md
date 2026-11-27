@@ -57,7 +57,7 @@ matter how big the roster is. Measured for a 3,000-character realm
 | --- | --- |
 | A page view, also after every action (open, recycle, trade, …) | about 20–70 KB: 1 byte per roster character, about 100 bytes per card the player owns, plus the realm's settings |
 | A pack opening, even 10 packs | about 13 KB |
-| Live pulls check (every 15 s while someone is on Packs) | a few hundred bytes; about 13 KB when a new big pull appears |
+| Live pulls check (every 15 s while someone is on Packs) | a few hundred bytes; about 13 KB when a new big pull appears, and about as much for each older page someone scrolls back to |
 | A **new server instance** or a **roster change** (import, Grow the roster, tagging, rarity edits, removals) | the **whole roster once**: about 0.5 KB per character, so 1 MB for 2,000 and 2.5 MB for 5,000 |
 | A backup from your PC | the whole database |
 

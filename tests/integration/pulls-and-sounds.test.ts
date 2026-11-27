@@ -4,6 +4,7 @@ import {
   bootstrap,
   createRealm,
   getRealmView,
+  linkDiscordAccount,
   openPack,
   provisionPlayer,
   readCharacterSound,
@@ -107,6 +108,76 @@ describe('live pulls', () => {
     expect(JSON.stringify(feed)).not.toContain('@example.test');
     expect((await recentPulls(db, admin, other)).pulls).toEqual([]);
     await expect(recentPulls(db, outsider, realm)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('names who holds each pulled character, never by email', async () => {
+    await linkDiscordAccount(db, 'pulls-admin@example.test', '500000000000000777');
+    await db.query(
+      'INSERT INTO discord_profiles(account_id,username,display_name) VALUES($1,$2,$3)',
+      [admin, 'original_pulls_admin', 'Original Pulls Admin'],
+    );
+    const all = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
+    const adminCode = (await getRealmView(db, admin, realm)).tradeCode,
+      playerCode = (await getRealmView(db, player, realm)).tradeCode;
+    const seen = await recentPulls(db, player, realm, { tiers: all });
+    const claimed = seen.pulls.filter((pull) => pull.status === 'claimed');
+    expect(claimed.length).toBeGreaterThan(0);
+    for (const pull of claimed)
+      expect(pull.owner).toEqual({
+        tradeCode: adminCode,
+        displayName: 'Original Pulls Admin',
+        username: 'original_pulls_admin',
+      });
+    // Your own cards carry no owner; the other member sees you by trade ID.
+    for (const pull of seen.pulls.filter((entry) => entry.status === 'yours'))
+      expect(pull.owner).toBeUndefined();
+    const fromAdmin = await recentPulls(db, admin, realm, { tiers: all });
+    for (const pull of fromAdmin.pulls.filter((entry) => entry.status === 'claimed'))
+      expect(pull.owner).toEqual({ tradeCode: playerCode, displayName: null, username: null });
+    expect(JSON.stringify([seen, fromAdmin])).not.toContain('@example.test');
+  });
+
+  it('pages further back in the same order, also inside one opening', async () => {
+    const all = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
+    const whole = await recentPulls(db, player, realm, { tiers: all, limit: 48 });
+    // One opening of five cards and one of a single card.
+    expect(whole.pulls).toHaveLength(6);
+    expect(whole.more).toBe(false);
+    const cursor = (key: string) => {
+      const [openingId, index] = key.split(':');
+      return { openingId, index: Number(index) };
+    };
+    for (const limit of [1, 2, 4, 5]) {
+      const pages = [await recentPulls(db, player, realm, { tiers: all, limit })];
+      while (pages.at(-1)!.more)
+        pages.push(
+          await recentPulls(db, player, realm, {
+            tiers: all,
+            limit,
+            before: cursor(pages.at(-1)!.pulls.at(-1)!.key),
+          }),
+        );
+      expect(pages.flatMap((page) => page.pulls.map((pull) => pull.key))).toEqual(
+        whole.pulls.map((pull) => pull.key),
+      );
+      expect(pages.slice(0, -1).every((page) => page.pulls.length === limit)).toBe(true);
+    }
+    // After the oldest pull, or from an unknown pull, there is nothing more.
+    expect(
+      await recentPulls(db, player, realm, {
+        tiers: all,
+        before: cursor(whole.pulls.at(-1)!.key),
+      }),
+    ).toEqual({ pulls: [], more: false });
+    expect(
+      await recentPulls(db, player, realm, { before: { openingId: randomUUID(), index: 0 } }),
+    ).toEqual({ pulls: [], more: false });
+    await expect(
+      recentPulls(db, player, realm, { before: { openingId: 'not-an-id', index: 0 } }),
+    ).rejects.toThrow();
+    await expect(
+      recentPulls(db, outsider, realm, { before: cursor(whole.pulls[0].key) }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
 

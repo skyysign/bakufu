@@ -11,6 +11,19 @@ Newest migration: `0033_level_curve.sql` (realm config v14).
 
 ### Added
 
+- **Live pulls go further back**: the row on the Packs page keeps its six cards
+  (four on tablets, three on phones, now one row there too) and gains round
+  newer/older buttons at its sides. They appear when you hover the row or
+  reach them with the keyboard (always on touch screens, where you can also
+  swipe); there is no scrollbar. Older pulls load 12 at a time as you go back,
+  so the regular update check stays as small as before, and new pulls arriving
+  while you look further back don't move the row.
+- **"Owned by" names the player**: where a character belongs to someone else
+  (Live pulls, the character glossary, your wishlist and the wishlist picker),
+  it now says **Owned by** and their name instead of "Owned by another
+  collector". In the glossary and on wishlist cards the name opens their
+  profile. Players without a Discord name show as "Player" and the start of
+  their trade ID, as on profiles.
 - **100 levels instead of 5**: the default level curve goes up to level 100
   (25,990 XP, about 2,600 new characters at 10 XP each); the step grows by 10
   XP every two levels. Realms still on the original five levels get it on

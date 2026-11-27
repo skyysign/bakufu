@@ -146,7 +146,8 @@ can grow a MyAnimeList realm with the popular-roster walk and remove characters
 
 Ordinary requests read the realm's roster from a per-process cache that
 PostgreSQL verifies by fingerprint in the same transaction (`roster-cache.ts`),
-and the Live pulls poll asks only whether a newer big pull exists, so database
+and the Live pulls poll asks only whether a newer big pull exists (older pulls
+load 12 at a time only when someone scrolls back), so database
 transfer stays small on hosted plans with transfer caps (Neon Free: 5 GB a
 month). `tests/integration/transfer-budget.test.ts` keeps the budgets (page
 view, opening, pull feed) for a 3,000-character realm and checks that roster
@@ -218,7 +219,9 @@ slots by default and gives wished characters 2× selection weight within their
 rarity tier, preserving rarity odds. The UI shows actual next-draw chances;
 claimed characters and unavailable packs show zero. Its **Character glossary**
 tab browses every realm character with search, rarity/ownership filters, portrait
-cards and recycling values. Wishlist and trade selection use searchable card
+cards and recycling values; a claimed character shows **Owned by** and the
+holder's name, linking to their profile (also on wishlist cards and in Live
+pulls). Wishlist and trade selection use searchable card
 dialogs. See [wishlist rules](gameplay/wishlist.md).
 Card faces have a fixed **5:7 portrait shape**, artwork-led name/series overlays
 and colored rarity frames. Select a card to inspect its enlarged artwork,

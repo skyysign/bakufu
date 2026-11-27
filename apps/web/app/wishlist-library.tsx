@@ -6,13 +6,8 @@ import { tiers } from '@card-engine/config';
 import { InspectableCard, CardPicker, type CardLoader } from './card-browser';
 import { PageHeader } from './app-shell';
 import { GameIcon } from './game-art';
+import { OwnershipStatus, ownershipText } from './ownership';
 
-const statusName = (status: string) =>
-  status === 'yours'
-    ? 'In your collection'
-    : status === 'claimed'
-      ? 'Owned by another collector'
-      : 'Unclaimed';
 const glossaryPageSize = 24;
 
 async function fetchCatalog(
@@ -96,7 +91,7 @@ export function WishlistLibrary({
         total: result.total,
         cards: result.characters.map((character) => ({
           ...character,
-          note: statusName(character.status),
+          note: ownershipText(character.status, character.owner),
         })),
       };
     },
@@ -162,13 +157,15 @@ export function WishlistLibrary({
                 <InspectableCard
                   card={{
                     ...character,
-                    note: statusName(character.status),
+                    note: ownershipText(character.status, character.owner),
                     valuation: view.characterValues[character.id],
                   }}
                 />
-                <p className={`library-card-status status-${character.status}`}>
-                  {statusName(character.status)}
-                </p>
+                <OwnershipStatus
+                  realmId={view.id}
+                  status={character.status}
+                  owner={character.owner}
+                />
                 <details className="card-chances">
                   <summary>
                     Next-draw chances<span className="sr-only"> for {character.name}</span>
@@ -270,12 +267,14 @@ export function WishlistLibrary({
                 <InspectableCard
                   card={{
                     ...character,
-                    note: statusName(character.status),
+                    note: ownershipText(character.status, character.owner),
                   }}
                 />
-                <p className={`library-card-status status-${character.status}`}>
-                  {statusName(character.status)}
-                </p>
+                <OwnershipStatus
+                  realmId={view.id}
+                  status={character.status}
+                  owner={character.owner}
+                />
                 <button
                   className="secondary"
                   aria-label={`Add ${character.name} to wishlist`}

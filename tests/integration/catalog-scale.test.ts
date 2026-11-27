@@ -156,8 +156,23 @@ describe('server-side catalog paging', () => {
     expect(legendary.characters.every((character) => character.tier === 'legendary')).toBe(true);
     const claimed = await browseRealmCatalog(db, player, realm, { status: 'claimed', limit: 60 });
     expect(claimed.total).toBe(10);
+    // Claimed characters name their holder (realm trade ID, no Discord names here).
+    const adminCode = (await getRealmView(db, admin, realm)).tradeCode;
+    expect(claimed.characters.map((character) => character.owner)).toEqual(
+      Array.from({ length: 10 }, () => ({
+        tradeCode: adminCode,
+        displayName: null,
+        username: null,
+      })),
+    );
     const mine = await browseRealmCatalog(db, admin, realm, { status: 'yours' });
     expect(mine.total).toBe(10);
+    expect(mine.characters.every((character) => character.owner === undefined)).toBe(true);
+    const unclaimed = await browseRealmCatalog(db, player, realm, {
+      status: 'available',
+      limit: 5,
+    });
+    expect(unclaimed.characters.every((character) => character.owner === undefined)).toBe(true);
     const view = await getRealmView(db, player, realm);
     const wish = first.characters.find((character) => character.status === 'available')!;
     await setWishlistEntry(db, player, realm, wish.id, true, randomUUID(), view.configRevision);

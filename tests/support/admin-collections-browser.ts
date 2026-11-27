@@ -86,9 +86,13 @@ export async function verifyAdminCollections(
       'animation-name',
       /card-(arrival|entrance)/,
     );
-    await expect(dialog).toContainText('Owned by another collector');
+    await expect(dialog).toContainText(`Owned by Player ${code.slice(0, 6)}`);
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
+    // The ownership line links the owner's name to their profile.
+    await expect(
+      page.getByRole('link', { name: `Player ${code.slice(0, 6)}`, exact: true }),
+    ).toHaveAttribute('href', `/profile?realm=${realm}&player=${code}`);
   } finally {
     await context.close();
   }

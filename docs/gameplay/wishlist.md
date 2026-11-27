@@ -9,8 +9,9 @@ they spend no gems or XP, reserve no cards, and do not reset cooldowns.
 Wishlists are private to each player and realm. A wish stays until removed,
 including after collecting or recycling that character. Collected or claimed
 wishes still use slots. A claimed character has zero draw chance until released
-back to the realm pool. Its status shows **In your collection** or **Claimed in
-this realm**, without exposing another player's identity or wishlist.
+back to the realm pool. Its status shows **In your collection** or **Owned by**
+and the holder's name, which opens their profile (members can already browse
+each other's collections there). Other players never see your wishlist.
 
 ## Probability policy
 

@@ -571,7 +571,19 @@ export async function GET(request: Request, context: Context) {
       const actor = await requireAccount(),
         query = new URL(request.url).searchParams,
         realmId = query.get('realmId') ?? '',
-        after = query.get('after');
+        after = query.get('after'),
+        before = query.get('before');
+      // Scrolling back asks for the page after the oldest pull shown
+      // (`before=<opening ID>:<card index>`).
+      if (before) {
+        const [openingId = '', index = ''] = before.split(':');
+        return NextResponse.json(
+          await recentPulls(db(), actor.id, realmId, {
+            before: { openingId, index: /^\d{1,4}$/.test(index) ? Number(index) : -1 },
+          }),
+          { headers: { 'Cache-Control': 'private, no-store' } },
+        );
+      }
       // Timed polls name the newest opening they show; answer "unchanged"
       // without re-sending the feed when nothing newer was pulled.
       if (after && !(await pullFeedChanged(db(), actor.id, realmId, after)))
